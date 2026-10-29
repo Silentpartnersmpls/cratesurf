@@ -1,0 +1,37 @@
+# Compiled test tools (tools/*.c). Build them where you need them.
+build/
+
+# The sysroot is built, never committed: it is Debian packages, unpacked.
+sysroot/
+mpcsys/
+/tmp/
+
+# Chromium's profile, if anyone ever runs a build in-tree.
+chrome-profile/
+
+# Device logs and run state, in case someone copies them back for a bug report.
+*.log
+*.pid
+run/
+
+# Editors, OSes and Python
+.DS_Store
+Thumbs.db
+*.swp
+*~
+__pycache__/
+*.pyc
+.venv/
+
+# Node, if someone ignores the "no dependencies" rule and npm appears anyway
+node_modules/
+npm-debug.log*
+package-lock.json
+
+# Local config and secrets. There are none today; keep it that way.
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+id_rsa*

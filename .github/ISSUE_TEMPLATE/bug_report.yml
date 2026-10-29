@@ -1,0 +1,80 @@
+name: Bug report
+description: Something broke, or something does not work the way README.md says it does
+title: "[bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before you file: this is alpha software with a known-issues list (KNOWN-ISSUES.md at the repo
+        root). Read it first, because half of what looks broken is documented behaviour.
+
+        Please paste real output rather than describing it. "It did not work" is not actionable;
+        an error line, a journal excerpt and the probe output usually are.
+
+  - type: input
+    id: model
+    attributes:
+      label: MPC model
+      description: The exact model, as printed in Preferences → Info
+      placeholder: MPC One+ (Gen 1)
+    validations:
+      required: true
+
+  - type: input
+    id: firmware
+    attributes:
+      label: Firmware version
+      description: Main menu → Preferences → Info, or `strings /usr/bin/MPC | grep -m1 '^3\.'`
+      placeholder: 3.4.2.13
+    validations:
+      required: true
+
+  - type: textarea
+    id: probe
+    attributes:
+      label: Probe output
+      description: "`./tools/probe-device.sh` and paste the whole thing, including the verdict"
+      render: text
+    validations:
+      required: true
+
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, step by step, and what you saw
+      placeholder: |
+        1. Held three fingers for 3 s
+        2. Nothing happened
+        3. Pressed Ctrl+Alt+B, that worked
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: "On the MPC: `journalctl -b --no-pager | tail -100`, or `/data/browser/run/chrome.out`, `/data/browser/run/pulse.out`"
+      render: text
+    validations:
+      required: false
+
+  - type: dropdown
+    id: saved
+    attributes:
+      label: Was your project saved before you tried this?
+      description: Browse mode stops the MPC app, and the app does not save on exit. This affects how much of what you lost was avoidable.
+      options:
+        - "Yes, saved (and any autosave prompt was merged)"
+        - "No, and I lost work"
+        - "Not applicable, I never got into browse mode"
+    validations:
+      required: true

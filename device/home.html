@@ -1,0 +1,370 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CrateSurf by SPS</title>
+<style>
+  /* CrateSurf by SPS - silent partner smpls.
+     The start page is a Navigator window: title strip, menu strip, toolbar with a
+     sunken Location field, page body, status bar. Dark chrome rather than 1995
+     silver because the MPC lives in a dark room, but every edge is the old 1px
+     light-top / dark-bottom bevel, and the palette is the Navigator sea-teal.
+
+     Honest chrome only: nothing in the menu strip or the title strip is a
+     decoration. Every word there does the thing it says, so there is no dead tap
+     on a panel with no mouse to hover with. */
+  :root {
+    color-scheme: dark;
+    --hi: rgba(255, 255, 255, 0.10);
+    --lo: rgba(0, 0, 0, 0.55);
+    --edge: #3b4353;
+    --edge-hi: #55617a;
+    --ink: #dfe6f2;
+    --dim: #8a94a6;
+    --teal: #00c8b4;
+    --teal-deep: #009e8d;
+    --sunken: #12161e;
+    --red: #ff5f76;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: #0b0e13; color: var(--ink);
+    font: 15px/1.35 "DejaVu Sans", system-ui, sans-serif;
+    padding: 9px; display: flex;
+  }
+
+  /* ---- window frame -------------------------------------------------------
+     Raised: light on the top edge, dark on the bottom, like every Navigator
+     window ever drawn. The radius stays small (4px) so it reads as a mashed
+     button and not as a phone app. */
+  .frame {
+    flex: 1; min-height: 0; display: flex; flex-direction: column;
+    border-radius: 5px; overflow: hidden;
+    border: 1px solid var(--edge-hi);
+    background: #232833;
+    box-shadow: inset 0 1px 0 var(--hi), 0 0 0 1px #05070a, 0 12px 34px rgba(0, 0, 0, 0.6);
+  }
+
+  /* ---- title strip -------------------------------------------------------- */
+  .title {
+    display: flex; align-items: center; gap: 9px; height: 34px; padding: 0 6px 0 10px;
+    background: linear-gradient(#39414f, #2a303c);
+    border-bottom: 1px solid #12161e;
+    box-shadow: inset 0 1px 0 var(--hi);
+  }
+  .title .mark { width: 19px; height: 19px; flex: none; }
+  .title .name {
+    font: 700 14px/1 "DejaVu Sans", sans-serif; letter-spacing: 3px; color: #eef4ff;
+  }
+  .title .by {
+    font: 600 10.5px/1 "DejaVu Sans", sans-serif; letter-spacing: 2px; color: var(--teal);
+    border-left: 1px solid #4d576a; padding-left: 9px;
+  }
+  .title .smpl {
+    font: 10.5px/1 "DejaVu Sans Mono", monospace; letter-spacing: 1px; color: #6f7c92;
+  }
+  .title .sp { flex: 1; }
+  .title .wbtn {
+    width: 30px; height: 22px; border-radius: 3px; flex: none;
+    background: linear-gradient(#414a5b, #2f3644);
+    border: 1px solid #59647a; color: #cfd8e6;
+    font: 700 13px/1 "DejaVu Sans", sans-serif;
+    box-shadow: inset 0 1px 0 var(--hi), inset 0 -1px 0 var(--lo);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .title .wbtn:active { background: #222836; box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.7); }
+
+  /* ---- menu strip --------------------------------------------------------- */
+  .menu {
+    display: flex; align-items: center; gap: 1px; height: 30px; padding: 0 5px;
+    background: linear-gradient(#2e3441, #252a35);
+    border-bottom: 1px solid #151a22;
+  }
+  .menu button {
+    background: none; border: 0; border-radius: 3px; cursor: pointer;
+    padding: 5px 11px; color: #c3ccdb;
+    font: 600 11.5px/1 "DejaVu Sans", sans-serif; letter-spacing: 1.6px;
+  }
+  .menu button:active {
+    background: #454f63; color: #fff;
+    box-shadow: inset 0 1px 0 var(--hi), inset 0 -1px 0 var(--lo);
+  }
+  .menu .mode {
+    margin-left: auto; color: var(--teal);
+    font: 700 10.5px/1 "DejaVu Sans Mono", monospace; letter-spacing: 1.5px;
+  }
+  .menu .mode::before {
+    content: ""; display: inline-block; width: 7px; height: 7px; margin-right: 6px;
+    border-radius: 50%; background: var(--teal); vertical-align: 1px;
+    box-shadow: 0 0 7px var(--teal);
+  }
+
+  /* ---- toolbar ------------------------------------------------------------ */
+  .tool {
+    display: flex; align-items: center; gap: 7px; height: 68px; padding: 0 9px;
+    background: linear-gradient(#2b3140, #212630);
+    border-bottom: 1px solid #12161e;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  }
+  .tbtn {
+    width: 54px; height: 48px; flex: none; cursor: pointer;
+    border-radius: 4px; border: 1px solid #535e75; color: #dbe3f0;
+    background: linear-gradient(#3a4356, #2b3242);
+    box-shadow: inset 0 1px 0 var(--hi), inset 0 -1px 0 var(--lo), 0 1px 0 #0a0d12;
+    font: 400 21px/1 "DejaVu Sans", sans-serif;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .tbtn:active {
+    background: #1d2331; transform: translateY(1px);
+    box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.75);
+  }
+  .tbtn.home { color: var(--teal); }
+
+  .loc {
+    flex: 1; min-width: 0; height: 48px; display: flex; align-items: center; gap: 10px;
+    padding: 0 12px; border-radius: 4px;
+    background: var(--sunken); border: 1px solid #0b0e13;
+    box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.75), inset 0 -1px 0 rgba(255, 255, 255, 0.05);
+  }
+  .loc .lab {
+    flex: none; color: #63708a;
+    font: 700 10px/1 "DejaVu Sans", sans-serif; letter-spacing: 1.8px;
+  }
+  .loc input {
+    flex: 1; min-width: 0; background: none; border: 0; outline: none;
+    color: #a9f2e8; font: 15px/1 "DejaVu Sans Mono", monospace; letter-spacing: 0.5px;
+  }
+  .loc input::placeholder { color: #4a5567; letter-spacing: 0.5px; }
+  .go {
+    height: 48px; padding: 0 26px; flex: none; cursor: pointer;
+    border-radius: 4px; border: 1px solid #0a6f64; color: #d8fffa;
+    background: linear-gradient(#0f8d7f, #0a6b61);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), inset 0 -1px 0 rgba(0, 0, 0, 0.45);
+    font: 700 13px/1 "DejaVu Sans", sans-serif; letter-spacing: 2px;
+  }
+  .go:active { background: #085c53; transform: translateY(1px); }
+
+  /* The throbber. Navigator's one animated thing, kept: it spins only while the
+     browser is actually leaving the page. */
+  .throb { width: 40px; height: 40px; flex: none; }
+  .throb .tail { opacity: 0.3; }
+  .throb.busy .tail { animation: surf 0.9s ease-in-out infinite; }
+  @keyframes surf {
+    0%   { opacity: 0.3; transform: translateX(-2px); }
+    50%  { opacity: 1;   transform: translateX(1px); }
+    100% { opacity: 0.3; transform: translateX(-2px); }
+  }
+
+  /* ---- page body ---------------------------------------------------------- */
+  .view {
+    position: relative;
+    flex: 1; min-height: 0; overflow-y: auto; padding: 14px;
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 11px; align-content: start;
+    background: #151a22;
+    box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.5);
+  }
+  /* Six sources leave a lot of panel empty, and empty reads as broken. Navigator's
+     start page always had a big graphic in it; this is that, drawn at 6% so it
+     sits under the tiles instead of competing with them. */
+  .watermark {
+    position: absolute; inset: 0; z-index: 0; pointer-events: none;
+    display: flex; flex-direction: column; align-items: center;
+    justify-content: flex-end; gap: 2px; padding-bottom: 24px;
+  }
+  .watermark svg { width: 92px; height: 92px; opacity: 0.10; }
+  .watermark span {
+    font: 700 40px/1 "DejaVu Sans", sans-serif; letter-spacing: 14px; color: #00c8b4;
+    opacity: 0.07; margin-left: 14px;
+  }
+  a.card {
+    position: relative; z-index: 1;
+    display: flex; flex-direction: column; justify-content: space-between; gap: 8px;
+    min-height: 118px; padding: 13px 14px; border-radius: 4px; text-decoration: none;
+    color: #d6dfee;
+    background: linear-gradient(#242b38, #1b212c);
+    border: 1px solid #3a4358;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07), inset 0 -1px 0 rgba(0, 0, 0, 0.4);
+  }
+  a.card:active {
+    background: #161c26; transform: translateY(1px);
+    box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.6);
+  }
+  a.card b { font: 700 15.5px/1.15 "DejaVu Sans", sans-serif; }
+  a.card small { color: #7f8ba0; font-size: 11.5px; line-height: 1.3; }
+  a.card .host {
+    color: #5c687e; font: 10.5px/1 "DejaVu Sans Mono", monospace; letter-spacing: 0.5px;
+    border-top: 1px dotted #333c4e; padding-top: 7px;
+  }
+  a.card.spend { border-color: #4a3a42; }
+  a.card.spend b { color: var(--red); }
+
+  /* ---- status bar --------------------------------------------------------- */
+  .status {
+    display: flex; align-items: center; gap: 10px; height: 32px; padding: 0 9px;
+    background: linear-gradient(#282e3a, #1e232d);
+    border-top: 1px solid #454f62;
+    box-shadow: inset 0 1px 0 var(--hi);
+    font-size: 11.5px; color: var(--dim);
+  }
+  .cell {
+    display: flex; align-items: center; gap: 6px; height: 22px; padding: 0 9px;
+    border-radius: 3px; border: 1px solid #161a22;
+    background: #141821;
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.7);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .cell.done { color: #7f8ba0; }
+  .cell a { color: var(--teal); text-decoration: none; }
+  .status .sp { flex: 1; }
+  #clock { font: 700 11.5px/1 "DejaVu Sans Mono", monospace; color: #9aa6ba; letter-spacing: 0.5px; }
+  #exitbar {
+    height: 24px; padding: 0 13px; cursor: pointer;
+    border-radius: 3px; border: 1px solid #7a2130; color: #ffdde3;
+    background: linear-gradient(#8a2033, #631726);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), inset 0 -1px 0 rgba(0, 0, 0, 0.45);
+    font: 700 11px/1 "DejaVu Sans", sans-serif; letter-spacing: 1.5px;
+  }
+  #exitbar:active { background: #4e1120; transform: translateY(1px); }
+  #hint { color: #5a6577; font: 10.5px/1 "DejaVu Sans Mono", monospace; }
+</style></head>
+<body>
+<div class="frame">
+
+  <div class="title">
+    <svg class="mark" viewBox="0 0 24 24" aria-hidden="true">
+      <rect x="2.6" y="4.6" width="18.8" height="14.8" rx="2.2" fill="#0e2226"
+            stroke="#00c8b4" stroke-width="1.8"/>
+      <path d="M3.8 18.8L21 4.9M3.8 4.9L21 18.8" stroke="#0a6d64" stroke-width="1.6"/>
+    </svg>
+    <span class="name">CRATESURF</span>
+    <span class="by">BY SPS</span>
+    <span class="smpl">silent partner smpls</span>
+    <span class="sp"></span>
+    <button class="wbtn" id="hidebar" title="Hide the toolbar">&minus;</button>
+    <button class="wbtn" id="exit" title="Back to the MPC">&#10005;</button>
+  </div>
+
+  <div class="menu">
+    <button data-go="files">FILES</button>
+    <button data-go="focus">GO</button>
+    <button data-go="reload">RELOAD</button>
+    <button data-go="back">BACK</button>
+    <span class="mode" id="status">BROWSE MODE</span>
+  </div>
+
+  <div class="tool">
+    <button class="tbtn" data-go="back" title="Back">&#8249;</button>
+    <button class="tbtn" data-go="fwd" title="Forward">&#8250;</button>
+    <button class="tbtn" data-go="reload" title="Reload">&#8635;</button>
+    <button class="tbtn home" data-go="home" title="Start page">&#8962;</button>
+    <div class="loc">
+      <span class="lab">LOCATION</span>
+      <input id="u" placeholder="paste a link, or press /" autocomplete="off"
+             spellcheck="false" inputmode="url">
+    </div>
+    <button class="go" id="go">GO</button>
+    <svg class="throb" id="throb" viewBox="0 0 40 40" aria-hidden="true">
+      <rect x="4" y="7" width="32" height="25" rx="3.5" fill="#0e2226"
+            stroke="#00c8b4" stroke-width="2.4"/>
+      <path d="M6.5 30.5L33.5 8M6.5 8L33.5 30.5" stroke="#0a6d64" stroke-width="2.4"/>
+      <path class="tail" d="M8 22c3-2.8 6-2.8 9 0s6 2.8 9 0 3-2.4 5-1.6"
+            stroke="#a9f2e8" stroke-width="3" stroke-linecap="round" fill="none"/>
+    </svg>
+  </div>
+
+  <div class="view">
+    <div class="watermark" aria-hidden="true">
+      <svg viewBox="0 0 24 24">
+        <rect x="2.6" y="4.6" width="18.8" height="14.8" rx="2.2" fill="none"
+              stroke="#00c8b4" stroke-width="1.2"/>
+        <path d="M3.8 18.8L21 4.9M3.8 4.9L21 18.8" stroke="#00c8b4" stroke-width="1.1"/>
+      </svg>
+      <span>CRATESURF</span>
+    </div>
+    <a class="card" href="https://freesound.org/search/?q="><b>Freesound</b><small>samples, free account, CC</small><span class="host">freesound.org</span></a>
+    <a class="card" href="https://www.looperman.com/loops"><b>Looperman</b><small>loops and acapellas, free</small><span class="host">looperman.com</span></a>
+    <a class="card" href="https://samplefocus.com/"><b>SampleFocus</b><small>one-shots, free tier</small><span class="host">samplefocus.com</span></a>
+    <a class="card" href="https://archive.org/details/audio"><b>Archive.org</b><small>whole records, public domain</small><span class="host">archive.org</span></a>
+    <a class="card" href="https://freemusicarchive.org/"><b>Free Music Archive</b><small>CC tracks</small><span class="host">freemusicarchive.org</span></a>
+    <a class="card spend" href="https://www.splice.com/sounds"><b>Splice</b><small>paid account needed</small><span class="host">splice.com</span></a>
+  </div>
+
+  <div class="status">
+    <span class="cell done" id="state">Document: Done</span>
+    <span class="cell">downloads &rarr; <a href="/files">MPC Documents / Samples</a></span>
+    <span class="sp"></span>
+    <span id="hint"></span>
+    <span id="clock"></span>
+    <button id="exitbar">EXIT BROWSE MODE</button>
+  </div>
+</div>
+
+<script>
+  const EXIT_URL = 'http://127.0.0.1:8799/exit';
+  const $ = (id) => document.getElementById(id);
+  const throb = $('throb');
+
+  // Navigator spun the throbber while it was fetching. Same rule: only while this
+  // page is actually on its way out, which on a kiosk is the instant before the
+  // next page paints.
+  const leaving = () => { throb.classList.add('busy'); };
+
+  const go = () => {
+    let v = $('u').value.trim();
+    if (!v) return;
+    if (!/^[a-z]+:\/\//i.test(v)) v = 'https://' + v;
+    leaving();
+    location.href = v;
+  };
+  $('go').onclick = go;
+  $('u').addEventListener('keydown', (e) => { if (e.key === 'Enter') go(); });
+
+  const exitToMpc = () => { leaving(); location.href = EXIT_URL; };
+  // Two ways out: the title strip's close box is the obvious one, and the red slab
+  // in the status bar is the one your hand already knows from before.
+  $('exit').onclick = exitToMpc;
+  $('exitbar').onclick = exitToMpc;
+
+  // Hide the floating toolbar so the page gets the whole panel. The bar lives in
+  // the extension's isolated world and cannot be reached directly, but a DOM event
+  // is shared by both worlds, so this is the one channel that crosses.
+  $('hidebar').onclick = () => {
+    try {
+      document.dispatchEvent(new CustomEvent('cratesurf-bar', { detail: 'hide' }));
+    } catch (_) {}
+  };
+
+  document.querySelectorAll('[data-go]').forEach((el) => {
+    el.addEventListener('click', () => {
+      const what = el.dataset.go;
+      if (what === 'back') { leaving(); if (history.length > 1) history.back(); }
+      else if (what === 'fwd') { leaving(); history.forward(); }
+      else if (what === 'reload') { leaving(); location.reload(); }
+      else if (what === 'home') { leaving(); location.href = '/home'; }
+      else if (what === 'files') { leaving(); location.href = '/files'; }
+      else if (what === 'focus') { $('u').focus(); $('u').select(); }
+    });
+  });
+
+  // Keyboard or mouse: / or Ctrl+L jumps to the Location field, Esc drops it.
+  // In kiosk mode there is no omnibox, so this is the way to type an address with
+  // a real keyboard plugged into the MPC.
+  window.addEventListener('keydown', (e) => {
+    const box = $('u');
+    if ((e.key === '/' || (e.key === 'l' && (e.ctrlKey || e.metaKey))) &&
+        document.activeElement !== box) {
+      e.preventDefault(); box.focus();
+      if (e.key !== '/') box.select(); else box.value = '';
+    } else if (e.key === 'Escape' && document.activeElement === box) {
+      box.blur();
+    }
+  });
+
+  $('hint').textContent = '/ to type a URL';
+  const tick = () => {
+    $('clock').textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
+  tick();
+  setInterval(tick, 10000);
+</script>
+</body></html>

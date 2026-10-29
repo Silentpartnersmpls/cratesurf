@@ -1,0 +1,30 @@
+[Unit]
+Description=MPC browse-mode toggle (phone/PC switch for the on-device browser)
+Documentation=file:/data/browser/README.md
+# Do NOT order this after network-online.target. On this firmware the network is
+# managed by connman, so systemd-networkd-wait-online.service never completes and
+# network-online.target never activates: every unit Wanted or ordered after it sits
+# in a queued start job forever, with nothing in the journal to say why. That is
+# exactly how the first version of this unit looked enabled-but-dead after a reboot.
+# The toggle binds 0.0.0.0 and needs no address to listen.
+After=mpc-agent.service
+# The toggle and its Node runtime both live on /data, not the tiny root filesystem.
+RequiresMountsFor=/data
+
+[Service]
+Type=simple
+ExecStart=/data/mpc-agent/runtime/node/bin/node /data/browser/bin/control-server.js
+# KillMode=process, not the default control-group. browse-up.sh is spawned by this
+# server, so weston and Chromium end up in this unit's cgroup; the default would
+# kill a live browsing session whenever the unit restarts (deploy, or a node crash
+# with Restart=always). Only the toggle itself should die here.
+KillMode=process
+Restart=always
+RestartSec=5
+# The MPC's audio thread is realtime. Yield to it when this gets busy.
+Nice=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

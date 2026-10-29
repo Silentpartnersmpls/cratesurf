@@ -1,0 +1,24 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>calib</title>
+<style>
+  html,body{margin:0;height:100%;background:#000;color:#0f0;font:700 34px monospace;overflow:hidden}
+  #r{padding:30px;white-space:pre}
+  #dot{position:fixed;width:26px;height:26px;border:3px solid #f0f;border-radius:50%;margin:-16px 0 0 -16px;display:none}
+</style></head>
+<body>
+<div id="r">tap anywhere
+x = -
+y = -
+size = -</div>
+<div id="dot"></div>
+<script>
+  const r = document.getElementById('r'), d = document.getElementById('dot');
+  document.addEventListener('pointerdown', e => {
+    d.style.display = 'block';
+    d.style.left = e.clientX + 'px';
+    d.style.top = e.clientY + 'px';
+    r.textContent = 'tap recorded\nx = ' + e.clientX + '\ny = ' + e.clientY +
+                    '\nsize = ' + innerWidth + 'x' + innerHeight;
+  });
+</script>
+</body></html>

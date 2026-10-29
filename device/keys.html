@@ -1,0 +1,79 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<title>INPUT TEST</title>
+<style>
+  :root { color-scheme: dark; }
+  body { margin:0; height:100vh; background:#0b0e14; color:#dbe4f2;
+         font:16px/1.4 system-ui, "DejaVu Sans", sans-serif;
+         display:grid; grid-template-columns:1fr 1fr; gap:14px; padding:16px;
+         box-sizing:border-box; }
+  h2 { margin:0 0 8px; font-size:13px; letter-spacing:2px; color:#ff3d5e; }
+  .box { background:#131823; border:1px solid #232a38; border-radius:10px; padding:14px; }
+  #kb { font:700 44px "DejaVu Sans Mono", monospace; color:#7ef0c3; min-height:56px; }
+  #mods { color:#8aa0bb; font-size:14px; min-height:20px; }
+  #typed { font:700 30px "DejaVu Sans Mono", monospace; color:#ffd479;
+           min-height:44px; word-break:break-all; }
+  input { width:100%; margin-top:10px; background:#0b0e14; border:1px solid #2a3242;
+          border-radius:8px; color:#dbe4f2; font:18px system-ui; padding:10px 12px; }
+  #ptr { font:700 34px "DejaVu Sans Mono", monospace; color:#8ab4ff; }
+  #clicks { color:#8aa0bb; font-size:15px; min-height:22px; }
+  #log { font:13px/1.5 "DejaVu Sans Mono", monospace; color:#5c6779;
+         white-space:pre-wrap; max-height:180px; overflow:hidden; }
+  .big { font-size:15px; color:#8aa0bb; }
+</style></head>
+<body>
+<div class="box">
+  <h2>KEYBOARD</h2>
+  <div id="kb">…</div>
+  <div id="mods"></div>
+  <div class="big" style="margin-top:12px">typed into a focused field:</div>
+  <div id="typed"></div>
+  <input id="f" placeholder="type here" autocomplete="off">
+</div>
+
+<div class="box">
+  <h2>POINTER</h2>
+  <div id="ptr">0, 0</div>
+  <div class="big">moves seen: <b id="mv">0</b></div>
+  <div id="clicks">no clicks yet</div>
+  <h2 style="margin-top:14px">EVENT LOG</h2>
+  <div id="log"></div>
+</div>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+  const logEl = $('log');
+  const push = (s) => {
+    logEl.textContent = (new Date().toLocaleTimeString() + '  ' + s + '\n' + logEl.textContent)
+      .split('\n').slice(0, 12).join('\n');
+  };
+
+  // Prove the page has focus, otherwise a live keyboard looks dead.
+  const f = $('f');
+  window.addEventListener('load', () => { f.focus(); push('page loaded, field focused'); });
+
+  window.addEventListener('keydown', (e) => {
+    $('kb').textContent = e.key.length === 1 ? e.key : e.key.toUpperCase();
+    const mods = [];
+    if (e.ctrlKey) mods.push('Ctrl'); if (e.altKey) mods.push('Alt');
+    if (e.shiftKey) mods.push('Shift'); if (e.metaKey) mods.push('Meta');
+    $('mods').textContent = mods.length ? 'mods: ' + mods.join(' + ') : 'mods: none';
+    push('keydown ' + JSON.stringify(e.key) + (mods.length ? ' [' + mods.join('+') + ']' : ''));
+  });
+
+  f.addEventListener('input', () => { $('typed').textContent = f.value; });
+
+  let moves = 0;
+  window.addEventListener('mousemove', (e) => {
+    $('ptr').textContent = Math.round(e.clientX) + ', ' + Math.round(e.clientY);
+    moves++; $('mv').textContent = moves;
+  });
+  window.addEventListener('mousedown', (e) => {
+    $('clicks').textContent = 'click at ' + Math.round(e.clientX) + ',' + Math.round(e.clientY) +
+      '  button ' + e.button;
+    push('mousedown button ' + e.button + ' at ' + e.clientX + ',' + e.clientY);
+  });
+  window.addEventListener('wheel', (e) => push('wheel ' + e.deltaY), { passive: true });
+  window.addEventListener('contextmenu', (e) => { e.preventDefault(); push('right click'); });
+</script>
+</body></html>

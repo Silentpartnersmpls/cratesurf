@@ -1,0 +1,47 @@
+name: Feature request
+description: Something CrateSurf should do, or should do better
+title: "[feature] "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Some things are impossible here for reasons that are not going to change: the MPC app holds
+        DRM master (so there is no side-by-side), the GPU is a vendor blob (so there is no hardware
+        raster), and Chromium on Linux has no ALSA backend (so PulseAudio is not optional).
+        KNOWN-ISSUES.md at the repo root lists what is missing and why.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+      description: Describe the situation, not the solution. "I cannot get back to a page I was on" beats "add a history menu".
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What you would like to happen
+    validations:
+      required: false
+
+  - type: dropdown
+    id: ability
+    attributes:
+      label: Can you test it on a device?
+      description: A change nobody can verify on hardware is still welcome, it just gets merged as unverified.
+      options:
+        - "Yes, I have a working MPC One+ install"
+        - "Yes, on a different MPC (say which in the text above)"
+        - "No, I can only read code"
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: willing
+    attributes:
+      label: Would you like to implement it?
+      options:
+        - label: Yes, with some guidance
+        - label: I have a patch ready

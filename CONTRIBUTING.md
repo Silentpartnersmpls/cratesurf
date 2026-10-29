@@ -54,10 +54,11 @@ device/bin/fix-prefs.sh       re-injects the download prefs before every launch
 device/bin/setup-profile.sh   one-time profile seed (download folder, policies)
 device/bin/killproc.sh        the ONLY supported way to stop a program (by /proc/<pid>/comm)
 device/bin/mpc-autosave.sh    turns the MPC app's own autosave on while the app is stopped
-device/bin/control-server.js  the always-on server on 8798: toggle page, start page, files, rec, unpack
+device/bin/control-server.js  the always-on server on 8798: toggle page, start page, files, rec, unpack, probe
 device/bin/touch-launcher.js  the three-finger / Ctrl+Alt+B detector
 device/bin/recorder.js        parec -> WAV in MPC Documents/Samples
 device/bin/unpack.js          reads a .zip with Node's zlib and extracts it into the sample folder
+device/bin/probe.js           HEADs a link so the bar can show its size and name before saving it
 device/bin/exit-server.js     loopback endpoint behind the EXIT button
 device/ext/                   the Chromium extension: bar (nav.js), worker (bg.js), main-world (main.js)
 device/home.html              the kiosk start page

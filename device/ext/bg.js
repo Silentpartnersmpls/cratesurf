@@ -178,6 +178,35 @@ chrome.runtime.onMessage.addListener((msg, _sender, respond) => {
     return true;
   }
 
+  // How big a file is, before the browser is asked for it. The device's server
+  // makes the request rather than this worker: same machine either way, but Node
+  // has no CORS to argue with and no page origin to be part of.
+  if (msg.kind === 'probe') {
+    const ctl = new AbortController();
+    const timer = setTimeout(() => ctl.abort(), 16000);
+    fetch(`${API}/probe?u=${encodeURIComponent(msg.url)}`, { cache: 'no-store', signal: ctl.signal })
+      .then((r) => r.json())
+      .then((j) => respond(j))
+      .catch((e) => respond({
+        ok: false,
+        error: e.name === 'AbortError' ? 'the site did not answer in time' : e.message
+      }))
+      .finally(() => clearTimeout(timer));
+    return true;
+  }
+
+  // Start the download the bar has just been told to start. It comes from the
+  // worker, not the page, because chrome.downloads is only here - and because the
+  // folder the file lands in belongs to the profile.
+  if (msg.kind === 'dl-start') {
+    chrome.downloads.download({ url: msg.url, conflictAction: 'uniquify' }, (id) => {
+      const r = errOf('download');
+      if (r.error) return respond(r);
+      respond({ ok: true, id });
+    });
+    return true;
+  }
+
   // Unpacking a downloaded zip happens on the device, next to the sample folder,
   // so it is the same story as the recorder: the page cannot reach 127.0.0.1 on
   // an https site (cross-origin, and mixed content on top of that), the worker

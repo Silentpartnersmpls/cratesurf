@@ -8,6 +8,18 @@ The project is alpha: expect the feature list below to move faster than the vers
 
 ### Added
 
+- **The size of a file, before you commit to it.** A tap on a file link now raises a card with the
+  name it will save under, its size and the free space in the sample folder, and the download starts
+  only when **DOWNLOAD** is pressed - instead of the first size anyone saw being the percent of a
+  transfer already running. The size is one `HEAD` request made by the device (new `/probe` route,
+  `device/bin/probe.js`), with a one-byte ranged `GET` as the fallback for servers that refuse
+  `HEAD`, so it costs seconds rather than the download. A pack that cannot fit is called out in red
+  and the button reads **WON'T FIT** and cannot be pressed; the button is also shut while the answer
+  is pending, because a press during the check is the blind commit this replaces. Only links the
+  browser would save rather than show are caught - audio, images, PDFs and pages are untouched.
+  Failures are reported in words ("could not reach that site: the connection was cut"), never as a
+  runtime's error code.
+- **Sizes over a gigabyte read in GB** in the panel and on the card, instead of "10240.0 MB".
 - **Unpack a downloaded `.zip` on the device.** A finished zip row now offers **UNPACK**; the bar
   counts files and fills a bar while it runs, and the pack appears in the sample folder as a folder
   the MPC can read. `device/bin/unpack.js` reads the archive with Node's own `zlib` - the firmware's
@@ -34,6 +46,10 @@ The project is alpha: expect the feature list below to move faster than the vers
 
 ### Fixed
 
+- **The downloads panel no longer says "nothing downloaded yet" right after a DOWNLOAD press.**
+  Chromium's download table answers empty for a moment after its worker starts and again as a
+  transfer begins, so the panel now waits for the row it just started instead of accepting that
+  answer, and says "reading the list…" while it does.
 - **CrateSurf no longer needs another project installed on the MPC.** The toggle unit and
   `browse-up.sh` pointed at `/data/mpc-agent/runtime/node/bin/node`, a Node runtime belonging to a
   different project, so an install on a device without that project produced a unit that could not

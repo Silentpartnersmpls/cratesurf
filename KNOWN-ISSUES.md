@@ -197,10 +197,13 @@ unpacking, the save-location picker and the graphical installer.
   oversight.
 - **No CI, no automated tests that run without the hardware.** There is no emulator for this
   device's panel or input stack.
-- **No size before you commit to a download.** The panel now has the history, the reason a
-  transfer stopped, cancel, retry, drop, unpacking, free space and a check that a finished file is
-  still in the folder (all pressed by hand on the unit), but a 300 MB pack still starts before you
-  know how big it is. Kiosk mode gives the page no way to ask first.
+- **Only a link can be asked about first.** A tap on a file link gets the size card; a download the
+  page starts from script, a `blob:` link, or a file served from a URL whose path has no extension
+  never reaches that check and still starts with no size shown. The card also asks the site with a
+  `HEAD` request of its own, so a site that only hands a pack to a request it recognises may answer
+  "size unknown" - or refuse the probe - while the download itself would have worked; and the saved
+  file is fetched by the browser's download manager rather than by the page, which is untested
+  against sites that gate downloads on the referer.
 - **No tar or rar.** Unpacking is zip only; a `.tar.gz` pack still needs a computer in the middle.
 - **No choice about where a download lands.** Everything goes to the sample library, which is
   usually right and not always right.

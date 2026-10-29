@@ -190,6 +190,14 @@ and **RETRY** / **DROP**, what finished with its size and **PLAY** if it is audi
 when the file has since left the folder. **DROP** forgets the row, never the file. Free space in the
 sample folder is printed next to the title, and `FILES` opens the folder itself.
 
+**The size before you commit.** Tapping a file link - an archive, a sample pack, anything the
+browser would save rather than show - puts a card in the corner *before* anything moves: the name it
+will save under, how big it is, and how much room the sample folder has left. A pack that cannot fit
+says so in red and the button reads **WON'T FIT** rather than starting a transfer that dies at the
+end. The size is one `HEAD` request made by the device, so it costs seconds, not the download; the
+button stays shut while it is being asked, and a site that will not answer gets **size unknown** and
+your call. Links the browser would show - audio, images, a PDF, another page - are left alone.
+
 **A downloaded `.zip` unpacks on the device.** The row offers **UNPACK**, the bar counts files while
 it runs, and the pack lands in the sample folder as a folder of its own - `Samples/Pack/Drums/...`,
 not `Samples/Pack/Pack/...` - so the MPC sees the whole pack without a computer in the middle. It
@@ -252,9 +260,8 @@ What is left unproven is one thing: a physical **mouse**. That is in
 ## What is coming
 
 [ROADMAP.md](ROADMAP.md) has the list. The short version, because these are the things people ask
-for first: the size **before you commit** to a download, **choosing where a download goes** instead
-of everything landing in the library, and a **graphical installer** so the first connection does
-not have to be a paragraph of shell.
+for first: **choosing where a download goes** instead of everything landing in the library, and a
+**graphical installer** so the first connection does not have to be a paragraph of shell.
 
 And the one that matters most for anyone finding this repo cold: **a graphical installer**. The
 build-a-chroot-over-SSH route above is honest and it works, but it is a lot to ask before you have

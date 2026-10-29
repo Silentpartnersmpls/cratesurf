@@ -172,6 +172,43 @@
       .acts button.go { color: #d8fffa; border-color: #0a6f64; background: linear-gradient(#0f8d7f, #0a6b61); }
       .acts button.go:active { background: #085c53; }
       .acts button:disabled { opacity: 0.4; }
+
+      /* The save card: what a file link actually is, asked before Chromium is
+         asked for it. Same slab as the panel, one job - how big is this, and is
+         there room for it. */
+      .confirm {
+        width: 400px; margin: 0 0 10px auto;
+        background: #1a1f28; border: 1px solid #5a6478; border-radius: 5px; overflow: hidden;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.10), 0 12px 34px rgba(0, 0, 0, 0.65);
+      }
+      .confirm .chead {
+        padding: 7px 11px; background: linear-gradient(#39414f, #2a303c);
+        border-bottom: 1px solid #12161e; color: #dfe6f2;
+        font: 700 11px "DejaVu Sans", sans-serif; letter-spacing: 1.8px;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.10);
+      }
+      .confirm .cbody { padding: 10px 11px 11px; display: flex; flex-direction: column; gap: 6px; }
+      .confirm .cname {
+        color: #d6dfee; font-size: 13px;
+        overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      }
+      .confirm .cmeta { color: #7f8ba0; font: 11px "DejaVu Sans Mono", monospace; }
+      /* .confirm .cmeta is two classes deep, so the panel's plain .err rule loses
+         to it and the shortfall line came out grey. */
+      .confirm .cmeta.err { color: #ff8fa2; }
+      .confirm .cfree { color: #5f6a7d; font: 10.5px "DejaVu Sans Mono", monospace; }
+      .confirm .cacts { display: flex; gap: 6px; margin-top: 3px; }
+      .confirm .cacts button {
+        width: auto; height: 34px; padding: 0 14px;
+        font: 700 11px/1 "DejaVu Sans", sans-serif; letter-spacing: 1.2px;
+      }
+      .confirm .cacts button.go {
+        color: #d8fffa; border-color: #0a6f64; background: linear-gradient(#0f8d7f, #0a6b61);
+      }
+      .confirm .cacts button.go:active { background: #085c53; }
+      /* The only :disabled rule in this sheet was scoped to the download rows, so a
+         disabled DOWNLOAD on the card blocked the press but still looked live. */
+      .confirm .cacts button:disabled { opacity: 0.4; }
     </style>
     <div class="wrap">
       <div class="toast" hidden></div>
@@ -182,6 +219,18 @@
           <button class="pclose">&#10005;</button>
         </div>
         <div class="plist"><div class="empty">nothing yet</div></div>
+      </div>
+      <div class="confirm" hidden>
+        <div class="chead">SAVE TO SAMPLES</div>
+        <div class="cbody">
+          <div class="cname"></div>
+          <div class="cmeta"></div>
+          <div class="cfree"></div>
+          <div class="cacts">
+            <button class="go cget">DOWNLOAD</button>
+            <button class="cx">CANCEL</button>
+          </div>
+        </div>
       </div>
       <div class="bar">
         <button data-act="home" class="plate" title="CrateSurf by SPS - start page">
@@ -247,6 +296,7 @@
 
   const fmtBytes = (n) => {
     if (!n) return '0 B';
+    if (n >= 1073741824) return (n / 1073741824).toFixed(1) + ' GB';
     if (n >= 1048576) return (n / 1048576).toFixed(1) + ' MB';
     if (n >= 1024) return Math.round(n / 1024) + ' KB';
     return n + ' B';
@@ -389,6 +439,124 @@
     refreshSpace();
   };
 
+  // ---- the size before you commit ------------------------------------------
+  // A pack link used to go straight to Chromium, so the first number anyone saw
+  // was the percent of a transfer already running. One HEAD request answers the
+  // question that decides it on a 7" panel: how big is this, and does it fit.
+  // Only formats the browser will not display are caught - a tap on an mp3 or a
+  // pdf stays the page's business, because Chromium plays those in the tab and a
+  // save card there would be a worse experience than the one it replaced.
+  const SAVEABLE = /\.(zip|7z|rar|tar|gz|tgz|bz2|xz|zst|iso|dmg|exe|msi|deb|rpm|apk|xpn|xpm|akp|flp|mid|midi)$/i;
+  const confirmEl = $('.confirm');
+  const cName = $('.confirm .cname');
+  const cMeta = $('.confirm .cmeta');
+  const cFree = $('.confirm .cfree');
+  const cGet = $('.confirm .cget');
+  let pendingSave = null;
+
+  const closeConfirm = () => {
+    confirmEl.hidden = true;
+    pendingSave = null;
+  };
+
+  // The card exists so the size is seen before the bytes move, so DOWNLOAD stays
+  // shut until there is an answer - including an answer of "no answer", which is
+  // still an answer. A press during the check is exactly the blind commit this
+  // replaces: on the unit, a 6 s HEAD timeout plus a quick finger started a 10 GB
+  // transfer with the size still reading "checking".
+  const setGet = (text, enabled) => {
+    cGet.textContent = text;
+    cGet.disabled = !enabled;
+  };
+
+  const openConfirm = async (url, name) => {
+    pendingSave = { url };
+    cName.textContent = name;
+    cMeta.textContent = 'checking size…';
+    cMeta.classList.remove('err');
+    cFree.textContent = '';
+    setGet('CHECKING…', false);
+    confirmEl.hidden = false;
+    const [j, sp] = await Promise.all([ask({ kind: 'probe', url }), ask({ kind: 'space' })]);
+    // The answer can arrive after the card has been dismissed or replaced by a
+    // link tapped behind it, and writing it now would put the wrong file on screen.
+    if (!pendingSave || pendingSave.url !== url) return;
+    const free = sp && sp.ok ? sp.free : 0;
+    if (free) cFree.textContent = fmtBytes(free) + ' free in the samples folder';
+    if (j && j.ok && j.name) cName.textContent = j.name;
+    if (!j || !j.ok) {
+      cMeta.textContent = (j && j.error) || 'size unknown';
+      setGet('DOWNLOAD', true);
+      return;
+    }
+    if (!j.size) {
+      cMeta.textContent = 'size unknown';
+      setGet('DOWNLOAD', true);
+      return;
+    }
+    // Saying the shortfall here is the whole point: the alternative is a download
+    // that dies at 99% with a file error that never mentions disk space.
+    if (free && j.size > free) {
+      cMeta.textContent = 'needs ' + fmtBytes(j.size) + ', more than the folder has left';
+      cMeta.classList.add('err');
+      // Not a warning over a live button: starting this one can only end in a
+      // transfer that dies at the end, so the offer comes off the card, and the
+      // button says which answer it is instead of going quietly dim.
+      setGet("WON'T FIT", false);
+      return;
+    }
+    cMeta.textContent = fmtBytes(j.size);
+    setGet('DOWNLOAD', true);
+  };
+
+  const startSave = async () => {
+    if (!pendingSave) return;
+    const url = pendingSave.url;
+    const name = cName.textContent;
+    const r = await ask({ kind: 'dl-start', url });
+    closeConfirm();
+    if (r && r.ok === false) {
+      say(r.error || 'the download did not start');
+      return;
+    }
+    say('saving ' + name);
+    openPanel();
+    // Chromium's download table answers empty for a moment after the worker starts
+    // and for a moment after a transfer begins, and a panel reading "nothing
+    // downloaded yet" right after a DOWNLOAD press looks like the press was lost.
+    // So keep asking until the row just started is actually in the answer - the
+    // card's own "reading the list…" holds the panel meanwhile.
+    for (let i = 0; i < 5; i++) {
+      const items = await askDownloads();
+      if (r && items.some((d) => d.id === r.id)) {
+        lastItems = items;
+        renderList(items);
+        return;
+      }
+      await new Promise((res) => setTimeout(res, 400));
+    }
+    poll();
+  };
+
+  // Caught in the capture phase on window, before the page's own handlers: the
+  // page would otherwise start the transfer in a way that cannot be un-asked.
+  window.addEventListener('click', (e) => {
+    if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    const path = e.composedPath ? e.composedPath() : [e.target];
+    if (path.includes(host)) return;
+    const a = e.target && e.target.closest ? e.target.closest('a[href]') : null;
+    if (!a || !a.href || !/^https?:/i.test(a.href)) return;
+    let p;
+    try { p = new URL(a.href).pathname; } catch (_) { return; }
+    // A download attribute is the page asking for a save whatever the type is.
+    if (!a.hasAttribute('download') && !SAVEABLE.test(p)) return;
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    let guessed = 'download';
+    try { guessed = decodeURIComponent(p.split('/').filter(Boolean).pop() || 'download'); } catch (_) {}
+    openConfirm(a.href, guessed);
+  }, true);
+
   // ---- recorder ------------------------------------------------------------
   // The capture itself runs on the device (control-server + parec on the sink's
   // monitor). The bar only needs a timer and a level, and it has to keep showing
@@ -487,6 +655,11 @@
   const openPanel = () => {
     panel.dataset.open = '1';
     panel.hidden = false;
+    // The download list is a round trip to a worker that may have gone to sleep,
+    // and on this CPU the first answer can take a moment. Saying that, instead of
+    // leaving "nothing yet" on screen right after a download was started, is the
+    // difference between a slow panel and a panel that looks broken.
+    if (!lastItems.length) plist.innerHTML = '<div class="empty">reading the list…</div>';
     askDownloads().then(renderList);
     refreshSpace();
   };
@@ -528,6 +701,8 @@
     else if (act === 'dlerase') dlAction('dl-erase', btn);
     else if (act === 'dlopen') location.assign(FILES + '/' + encodeURIComponent(btn.dataset.name));
     else if (act === 'unpack') startUnpack(btn.dataset.name);
+    else if (btn.classList.contains('cget')) startSave();
+    else if (btn.classList.contains('cx')) closeConfirm();
     else if (act === 'hide') setCollapsed(true);
     else if (btn.classList.contains('tab')) setCollapsed(false);
     else if (btn.classList.contains('pclose')) closePanel();

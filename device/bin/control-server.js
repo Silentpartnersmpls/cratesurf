@@ -8,6 +8,7 @@
 //                are allowed to run on it (content scripts are kept off file://)
 //   /files       the download folder, listed - the "where did it go" page
 //   /files/<f>   one file out of it, for playing a sample back in the browser
+//   /probe       what a link is - its name and size - before it is downloaded
 //   /unpack      expand a .zip from that folder into a folder of its own
 //
 // It also watches the input devices so browse mode can be started from the MPC
@@ -25,6 +26,7 @@ const { execFile } = require('child_process');
 const launcher = require('./touch-launcher.js');
 const { createRecorder } = require('./recorder.js');
 const unpacker = require('./unpack.js');
+const { probeLink } = require('./probe.js');
 
 const recorder = createRecorder();
 
@@ -369,6 +371,18 @@ http.createServer(async (req, res) => {
     } catch (e) {
       sendJson(res, { ok: false, error: e.message });
     }
+    return;
+  }
+
+  // What a link is, before the browser is asked for it. Loopback-only because it
+  // makes this machine fetch an address somebody else chose, and the rest of the
+  // LAN has no business using the MPC as a request proxy.
+  if (p === '/probe') {
+    if (!localOnly(req)) { res.writeHead(403); res.end(); return; }
+    const target = u.searchParams.get('u') || '';
+    const info = await probeLink(target);
+    console.log(`probe ${info.ok ? `${info.size || 'unknown'} bytes` : `failed: ${info.error}`} ${target}`);
+    sendJson(res, info);
     return;
   }
 

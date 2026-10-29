@@ -8,14 +8,18 @@ so nobody has to guess whether a thing is planned or just absent.
 Downloads work and land in `MPC Documents/Samples` where the MPC can see them. What is missing is
 everything around them.
 
-- **A real download manager. Done, apart from one thing.** The panel lists running, stopped and
-  finished downloads as three different things: running has percent and **CANCEL**, stopped has the
-  reason in plain words with **RETRY** and **DROP**, finished has its size with **PLAY** for audio
-  and **UNPACK** for a zip, plus **DROP** (forget the row, never the file) and **GET AGAIN** when
-  the file has left the folder. Free space in the sample folder sits in the panel title, so a 300 MB
-  pack is not started on 40 MB of room. Still missing: the size **before** you commit, which needs a
-  request per link before the browser is asked for it, and a place on a page that is not ours to
-  show the answer.
+- **A real download manager. Done.** The panel lists running, stopped and finished downloads as
+  three different things: running has percent and **CANCEL**, stopped has the reason in plain words
+  with **RETRY** and **DROP**, finished has its size with **PLAY** for audio and **UNPACK** for a
+  zip, plus **DROP** (forget the row, never the file) and **GET AGAIN** when the file has left the
+  folder. Free space in the sample folder sits in the panel title, so a 300 MB pack is not started
+  on 40 MB of room. **The size before you commit is in too:** a tap on a file link raises a card
+  with the name, the size and the free space, and the download only starts when that is pressed.
+  The size is one `HEAD` from the device (`/probe` on the control server, `device/bin/probe.js`),
+  falling back to a one-byte ranged GET for sites that refuse `HEAD`; a pack that does not fit says
+  so in red and the button reads **WON'T FIT**. It cannot see a download a page starts from script,
+  a `blob:` link, or a URL with no extension - that is in
+  [KNOWN-ISSUES.md](KNOWN-ISSUES.md#missing-features) rather than hidden here.
 - **Unpack archives on the device. Done.** Half the sample packs on the internet are a `.zip` with
   folders in it, and that used to mean download it, go find a computer, come back. A finished zip
   now offers **UNPACK** and the pack appears in the sample folder in a form the MPC reads, folded

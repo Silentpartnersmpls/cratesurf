@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "CrateSurf Bar by SPS",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "description": "The CrateSurf toolbar by SPS (silent partner smpls): back, forward, reload, start page, downloads and an MPC exit on every page, plus a fullscreen blocker, for the MPC kiosk. Kiosk mode has no browser chrome and no back button, so a page with no link home is a trap.",
   "permissions": ["downloads"],
   "host_permissions": ["http://127.0.0.1:8798/*"],

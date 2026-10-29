@@ -6,6 +6,18 @@ The project is alpha: expect the feature list below to move faster than the vers
 
 ## [Unreleased]
 
+### Added
+
+- **A download manager in the bar.** The panel now treats running, stopped and finished downloads as
+  three different things instead of printing the same row for all of them: running has percent and
+  **CANCEL**, stopped has Chromium's error enum translated into plain words (`CRASH` reads "the
+  browser closed before it finished") with **RETRY** and **DROP**, finished has its size, **PLAY**
+  for audio and **GET AGAIN** when `exists` says the file has left the folder. Retry resumes the
+  bytes already on disk when the server allows it, asks again when it does not, and removes the row
+  it replaced so the same file is not listed twice.
+- **Free space in the downloads panel**, from a new `/space` route on the control server, so a large
+  pack is not started on a full sample folder and left to die at the end with a file error.
+
 ### Fixed
 
 - **CrateSurf no longer needs another project installed on the MPC.** The toggle unit and

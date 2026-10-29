@@ -158,12 +158,26 @@
       .fill { height: 100%; width: 0; background: linear-gradient(90deg, #009e8d, #00c8b4); transition: width 0.25s linear; }
       .empty { padding: 14px; color: #5a6577; font: 11.5px "DejaVu Sans Mono", monospace; text-align: center; }
       .err { color: #ff8fa2; }
+      .phead .free {
+        font: 10.5px "DejaVu Sans Mono", monospace; color: #7f8ba0;
+        letter-spacing: 0; white-space: nowrap;
+      }
+      /* Row actions sit below the bar, so a finger cannot be aiming at CANCEL and
+         hit the row above it. */
+      .acts { display: flex; gap: 6px; margin-top: 8px; }
+      .acts button {
+        width: auto; height: 30px; padding: 0 12px;
+        font: 700 10.5px/1 "DejaVu Sans", sans-serif; letter-spacing: 1.2px;
+      }
+      .acts button.go { color: #d8fffa; border-color: #0a6f64; background: linear-gradient(#0f8d7f, #0a6b61); }
+      .acts button.go:active { background: #085c53; }
+      .acts button:disabled { opacity: 0.4; }
     </style>
     <div class="wrap">
       <div class="toast" hidden></div>
       <div class="panel" hidden>
         <div class="phead">
-          <span>DOWNLOADS</span><span class="sp"></span>
+          <span>DOWNLOADS</span><span class="free"></span><span class="sp"></span>
           <button class="files">FILES</button>
           <button class="pclose">&#10005;</button>
         </div>
@@ -197,6 +211,7 @@
   const tab = $('.tab');
   const badge = $('.badge');
   const plist = $('.plist');
+  const freeEl = $('.phead .free');
 
   // A page opened cold has nothing to go back to, so back falls through to the
   // start page instead of doing nothing, and neither arrow is ever disabled.
@@ -233,6 +248,18 @@
   const esc = (s) => String(s).replace(/[&<>"]/g, (c) =>
     ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
+  // Only these can be opened in the browser: an audio file plays in the tab, a zip
+  // would just download itself again.
+  const PLAYABLE = /\.(wav|mp3|ogg|flac|m4a|aif|aiff|mid)$/i;
+
+  const dlBtn = (act, d, text, go) =>
+    '<button data-act="' + act + '" data-id="' + d.id + '" data-name="' + esc(d.name) + '"' +
+    (go ? ' class="go"' : '') + '>' + text + '</button>';
+
+  // Three states, three different things a person can do. Before this, every row
+  // looked the same and the only one with a control on it was the browser's own
+  // implicit one (click again and hope), so an interrupted download sat there as
+  // the single word CRASH until the history was wiped.
   const renderList = (items) => {
     if (!items.length) {
       plist.innerHTML = '<div class="empty">nothing downloaded yet</div>';
@@ -240,29 +267,68 @@
     }
     plist.innerHTML = items.map((d) => {
       const pct = d.total ? Math.min(100, Math.round((d.done / d.total) * 100)) : 0;
-      const label = d.state === 'complete'
-        ? fmtBytes(d.done) + ' saved'
-        : d.state === 'interrupted'
-          ? '<span class="err">' + esc(d.error || 'failed') + '</span>'
-          : fmtBytes(d.done) + (d.total ? ' of ' + fmtBytes(d.total) + ' · ' + pct + '%' : '');
+      let label, acts = '';
+      if (d.state === 'complete') {
+        const gone = d.exists === false;
+        label = fmtBytes(d.done) + ' saved' +
+          (gone ? ' · <span class="err">gone from the folder</span>' : '');
+        if (PLAYABLE.test(d.name) && !gone) acts = dlBtn('dlopen', d, 'PLAY', true);
+        // Same retry as an interrupted one: the file was deleted or moved after it
+        // landed, and a row that only says so with no way forward is the dead end
+        // this panel is meant to remove.
+        if (gone && /^https?:/i.test(d.url || '')) acts = dlBtn('dlretry', d, 'GET AGAIN', true);
+      } else if (d.state === 'interrupted') {
+        // reason is the worker's plain-English version of Chromium's error enum.
+        label = '<span class="err">' + esc(d.reason || d.error || 'it stopped') + '</span>';
+        acts = dlBtn('dlretry', d, 'RETRY', true) + dlBtn('dlerase', d, 'DROP');
+      } else {
+        label = fmtBytes(d.done) + (d.total ? ' of ' + fmtBytes(d.total) + ' · ' + pct + '%' : ' of unknown size');
+        acts = dlBtn('dlcancel', d, 'CANCEL');
+      }
       const barHtml = d.state === 'in_progress'
         ? '<div class="bar2"><div class="fill" style="width:' + pct + '%"></div></div>' : '';
       return '<div class="row"><div class="name">' + esc(d.name) + '</div>' +
-             '<div class="meta">' + label + '</div>' + barHtml + '</div>';
+             '<div class="meta">' + label + '</div>' + barHtml +
+             (acts ? '<div class="acts">' + acts + '</div>' : '') + '</div>';
     }).join('');
   };
 
   // chrome.downloads is only reachable from the extension's worker, so every
   // refresh is a round trip. lastError has to be read or Chromium logs an
   // unchecked error on every poll while the worker wakes.
-  const askDownloads = () => new Promise((resolve) => {
+  const ask = (msg) => new Promise((resolve) => {
     try {
-      chrome.runtime.sendMessage({ kind: 'downloads' }, (res) => {
+      chrome.runtime.sendMessage(msg, (res) => {
         void chrome.runtime.lastError;
-        resolve(Array.isArray(res) ? res : []);
+        resolve(res || {});
       });
-    } catch (_) { resolve([]); }
+    } catch (_) { resolve({}); }
   });
+
+  const askDownloads = async () => {
+    const res = await ask({ kind: 'downloads' });
+    return Array.isArray(res) ? res : [];
+  };
+
+  // How much room is left where these land. A sample pack can be 300 MB and the
+  // failure without this number is a download that dies at 99% with a file error.
+  const refreshSpace = async () => {
+    const j = await ask({ kind: 'space' });
+    freeEl.textContent = j && j.ok ? fmtBytes(j.free) + ' free' : '';
+    freeEl.title = j && j.ok ? 'free space in the samples folder' : '';
+  };
+
+  // Cancel, retry and drop all answer through the worker, then the list is redrawn
+  // from what Chromium actually did rather than from what was asked for.
+  const dlAction = async (kind, btn) => {
+    const id = Number(btn.dataset.id);
+    btn.disabled = true;
+    const r = await ask({ kind, id });
+    btn.disabled = false;
+    if (r && r.ok === false) say(r.error || 'that did not work');
+    renderList(await askDownloads());
+    refreshSpace();
+  };
 
   // ---- recorder ------------------------------------------------------------
   // The capture itself runs on the device (control-server + parec on the sink's
@@ -362,6 +428,7 @@
     panel.dataset.open = '1';
     panel.hidden = false;
     askDownloads().then(renderList);
+    refreshSpace();
   };
   const closePanel = () => {
     panel.dataset.open = '0';
@@ -396,6 +463,10 @@
     else if (act === 'exit') location.assign(EXIT);
     else if (act === 'dl') (panel.dataset.open === '1' ? closePanel() : openPanel());
     else if (act === 'rec') toggleRec();
+    else if (act === 'dlcancel') dlAction('dl-cancel', btn);
+    else if (act === 'dlretry') dlAction('dl-retry', btn);
+    else if (act === 'dlerase') dlAction('dl-erase', btn);
+    else if (act === 'dlopen') location.assign(FILES + '/' + encodeURIComponent(btn.dataset.name));
     else if (act === 'hide') setCollapsed(true);
     else if (btn.classList.contains('tab')) setCollapsed(false);
     else if (btn.classList.contains('pclose')) closePanel();

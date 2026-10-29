@@ -183,10 +183,12 @@ collapses the bar to a tab. It lives in a shadow root so a site's CSS cannot res
 and it re-appends itself if an ad covers it. **MPC** is the guaranteed way out: one tap ends the
 session and hands the panel back, whatever the page is doing.
 
-**Downloads** land in `MPC Documents/Samples`, which is the MPC's own sample folder. The bar's
-downloads panel shows bytes and percent while a file is running (kiosk mode paints no download
-bubble, so without it a download is invisible), and `FILES` in that panel lists the folder and
-plays a sample back.
+**Downloads** land in `MPC Documents/Samples`, which is the MPC's own sample folder. Kiosk mode
+paints no download bubble, so the bar's panel is the only download UI there is, and it carries the
+whole job: what is running with percent and **CANCEL**, what stopped with the reason in plain words
+and **RETRY** / **DROP**, what finished with its size and **PLAY** if it is audio, and **GET AGAIN**
+when the file has since left the folder. Free space in the sample folder is printed next to the
+title, and `FILES` opens the folder itself.
 
 **REC** records whatever the browser is playing, straight into the sample folder as
 `Web Grab NNN.wav`, at 44.1 kHz 16-bit stereo. Press it, play the thing, press it again. A take

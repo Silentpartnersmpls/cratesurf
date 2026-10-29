@@ -8,9 +8,13 @@ so nobody has to guess whether a thing is planned or just absent.
 Downloads work and land in `MPC Documents/Samples` where the MPC can see them. What is missing is
 everything around them.
 
-- **A real download manager.** The bar's panel shows bytes and percent for the file running now, and
-  that is it. What it needs: a list of what finished, what failed and why, retry, cancel, remove, and
-  a way to see the file size before you commit to pulling 300 MB over wifi.
+- **A real download manager. Done, apart from one thing.** The panel lists running, stopped and
+  finished downloads as three different things: running has percent and **CANCEL**, stopped has the
+  reason in plain words with **RETRY** and **DROP**, finished has its size with **PLAY** for audio
+  and **GET AGAIN** when the file has left the folder. Free space in the sample folder sits in the
+  panel title, so a 300 MB pack is not started on 40 MB of room. Still missing: the size **before**
+  you commit, which needs a request per link before the browser is asked for it, and a place on a
+  page that is not ours to show the answer.
 - **Unpack archives on the device.** Half the sample packs on the internet are a `.zip` with folders
   in it. Right now that means download it, then go find a computer, then come back. The plan is to
   unpack inside the browser: a `.zip` arrives, the bar offers to expand it into a folder in the

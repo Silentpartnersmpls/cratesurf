@@ -288,6 +288,20 @@ http.createServer(async (req, res) => {
     sendJson(res, { mode: mode() });
     return;
   }
+  // Free space where downloads land. The downloads panel shows it so a 300 MB
+  // sample pack is not started on 40 MB of room, which otherwise fails at the end
+  // with a file error that says nothing about disk space. Read-only and not
+  // sensitive, so it answers on the LAN like /status does.
+  if (p === '/space') {
+    try {
+      const st = fs.statfsSync(FILES_ROOT);
+      sendJson(res, { ok: true, free: st.bavail * st.bsize, total: st.blocks * st.bsize });
+    } catch (e) {
+      sendJson(res, { ok: false, error: e.message });
+    }
+    return;
+  }
+
   if (p === '/up' || p === '/down') {
     sendJson(res, { mode: mode(), ...(await run(p === '/up' ? UP : DOWN)) });
     return;

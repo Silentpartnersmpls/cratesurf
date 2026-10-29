@@ -185,8 +185,10 @@ unpacking, the save-location picker and the graphical installer.
   oversight.
 - **No CI, no automated tests that run without the hardware.** There is no emulator for this
   device's panel or input stack.
-- **No download manager to speak of.** The panel shows the transfer in flight; there is no history,
-  no retry, no cancel, no way to see a file's size before you start.
+- **No size before you commit to a download.** The panel now has the history, the reason a
+  transfer stopped, cancel, retry, drop, free space and a check that a finished file is still in the
+  folder (all pressed by hand on the unit), but a 300 MB pack still starts before you know how big
+  it is. Kiosk mode gives the page no way to ask first.
 - **No way to unpack an archive on the device.** A `.zip` of sample packs has to be unpacked
   somewhere else and moved back.
 - **No choice about where a download lands.** Everything goes to the sample library, which is

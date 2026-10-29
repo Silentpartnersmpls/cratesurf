@@ -11,6 +11,11 @@ SSH="ssh -o BatchMode=yes -o StrictHostKeyChecking=no"
 
 $SSH "$HOST" "mkdir -p $R/bin $R/run $R/sysroot/opt/kb-ext $R/sysroot/etc/xdg/weston"
 
+# The toggle, the launcher, the exit endpoint and the recorder are Node scripts and the
+# firmware has no Node, so the runtime is part of the deploy. Idempotent: it prints one
+# line and exits when the pinned version is already on the device.
+"$HERE/deploy/install-node.sh"
+
 scp -q -o BatchMode=yes -o StrictHostKeyChecking=no "$HERE"/device/bin/*.sh "$HERE"/device/bin/*.js "$HOST:$R/bin/"
 # The nav bar is an unpacked extension loaded with --load-extension, so the whole
 # folder has to be there, not just the script it runs.

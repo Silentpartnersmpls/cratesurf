@@ -18,26 +18,25 @@ is on you.
 | MPC One+ (Gen 1), firmware **3.4.2.13** | The only unit and build this has been run on | Main menu → Preferences → Info, or `strings /usr/bin/MPC \| grep -m1 '^3\.'` |
 | Root SSH into the MPC | Everything is installed over SSH | `ssh root@<mpc-ip> 'id -u'` prints `0` |
 | About 1 GB free on `/data` | The chroot is ~775 MB, plus a browser profile | `ssh root@<mpc-ip> df -h /data` |
-| A Node.js runtime at `/data/mpc-agent/runtime/node/bin/node` | The toggle server, the exit endpoint, the launcher and the recorder are Node scripts | `ssh root@<mpc-ip> /data/mpc-agent/runtime/node/bin/node --version` |
 | MPC on the same LAN as your computer | `ssh`, `scp` and port 8798 | `ping <mpc-ip>` |
 
 **Root SSH is not something this project provides.** If you do not already have it, stop here.
 
-**If you do not have a Node runtime at that path**, you have two options. Either put one there
-(the toggle unit and `browse-up.sh` both point at that exact path):
+**Nothing else has to be installed on the MPC.** The firmware ships no Node, so this project brings
+its own: `deploy/install-node.sh` fetches the official armv7 build, checks it against a pinned
+sha256, and puts the single `node` binary at `/data/browser/node/bin/node`, which is where
+`browse-up.sh` and the unit look for it. `./deploy.sh` and `./deploy/install-service.sh` both call
+that script, so there is no separate step; run it on its own to get the download out of the way
+first. It is idempotent and prints one line when the pinned version is already installed.
 
-```sh
-# on your computer, pull the official armv7 build and push just the binary across
-curl -LO https://nodejs.org/dist/v22.23.4/node-v22.23.4-linux-armv7l.tar.xz
-tar xf node-v22.23.4-linux-armv7l.tar.xz
-ssh root@<mpc-ip> 'mkdir -p /data/mpc-agent/runtime/node/bin'
-scp node-v22.23.4-linux-armv7l/bin/node root@<mpc-ip>:/data/mpc-agent/runtime/node/bin/
-ssh root@<mpc-ip> 'chmod 755 /data/mpc-agent/runtime/node/bin/node && /data/mpc-agent/runtime/node/bin/node --version'
-```
+That runtime is this project's own dependency, not a loan from anywhere else. Earlier versions
+pointed at `/data/mpc-agent/runtime/node/bin/node`, which meant CrateSurf did not work unless
+another project happened to be installed on the same device; `install-rootfs-unit.sh` still
+recognises that old `ExecStart` so an earlier install upgrades instead of refusing.
 
-or point the project at a Node you already have, which means editing three places:
-`NODE=` at the top of `device/bin/browse-up.sh`, `ExecStart=` in `device/mpc-browse.service`, and
-the `grep` in `deploy/install-rootfs-unit.sh` that refuses to install a unit it does not recognise.
+The version and its checksum live at the top of `deploy/install-node.sh` (`VERSION`, `SHA256`).
+Change both together, or the check deletes the download and fails before anything reaches the
+device.
 
 Everything else runs from the chroot this project builds, so the MPC needs no other software.
 
@@ -100,7 +99,7 @@ Read-only. Changes nothing.
 -- glibc            PASS 2.39 (bookworm needs 2.36)
 ...
 -- panel            PASS card1-DSI-1 connected, modes: 800x1280
--- node             PASS v22.23.4
+   node             not installed yet, deploy/install-node.sh fetches one
 
 == verdict: shape matches the tested unit (MPC One+ Gen 1, firmware 3.4.2.13)
    README.md and INSTALL.md apply. Save your project before the first switch.
@@ -154,9 +153,12 @@ scratch. Set `CACHE_ONLY=1` to leave the tree in `/tmp/mpcsys/root` and ship not
 ```
 
 Copies `device/bin/*`, the extension, `weston.ini`, the kiosk pages and the unit into
-`/data/browser`, makes the shell scripts executable and seeds the Chromium profile so downloads go
-to the sample folder without a dialog. Expect `deployed`, then the two lines telling you how to
-enter and leave browse mode.
+`/data/browser`, installs the Node runtime if it is missing, makes the shell scripts executable and
+seeds the Chromium profile so downloads go to the sample folder without a dialog. A first run on a
+device without Node starts with a `+ downloading node-v22.23.4-linux-armv7l (~25 MB)` line and then
+`node v22.23.4 installed at /data/browser/node/bin/node`; after that it says
+`node v22.23.4 already installed` and moves on. Expect `deployed`, then the two lines telling you
+how to enter and leave browse mode.
 
 ## Step 4: install the toggle service
 
@@ -385,6 +387,7 @@ For anyone who wants to know exactly what this touches:
 | Path | What | Removed by |
 | --- | --- | --- |
 | `/data/browser/sysroot` | the Debian chroot, ~775 MB | step 4 |
+| `/data/browser/node` | the pinned Node runtime, `bin/node` and its `LICENSE`, ~105 MB | step 4 |
 | `/data/browser/bin` and `/data/browser/sysroot/opt` | the scripts, the extension, the kiosk pages, `weston.ini` | step 4 |
 | `/data/browser/run` | pids, the `mode` file, logs | step 4 |
 | `/etc/systemd/system/mpc-browse.service` | the toggle unit | step 2 |

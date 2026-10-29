@@ -4,6 +4,19 @@ All notable changes to CrateSurf. Dates are the day the change landed on the tes
 
 The project is alpha: expect the feature list below to move faster than the version numbers.
 
+## [Unreleased]
+
+### Fixed
+
+- **CrateSurf no longer needs another project installed on the MPC.** The toggle unit and
+  `browse-up.sh` pointed at `/data/mpc-agent/runtime/node/bin/node`, a Node runtime belonging to a
+  different project, so an install on a device without that project produced a unit that could not
+  start. `deploy/install-node.sh` now fetches the pinned official armv7 Node (v22.23.4, sha256
+  checked, `bin/node` only) to `/data/browser/node/bin/node`, and `deploy.sh` and
+  `deploy/install-service.sh` both call it. `install-rootfs-unit.sh` still recognises the old
+  `ExecStart` so an existing install upgrades instead of refusing, and `probe-device.sh` reports the
+  runtime as project state rather than as a requirement of the device.
+
 ## [0.1.0-alpha] - 2026-10-29
 
 First public release. Everything here has run on one MPC One+ (Gen 1, firmware 3.4.2.13) and

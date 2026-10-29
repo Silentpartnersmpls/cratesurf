@@ -123,11 +123,17 @@ else
   say require audio "WARN no ACVA codec in /proc/asound/cards, sound may not work"
 fi
 
-NODE=/data/mpc-agent/runtime/node/bin/node
+# Project state, not device shape: CrateSurf installs its own Node (deploy/install-node.sh),
+# so a device without one is still the tested shape. Reported as identity for that reason, and
+# an older borrowed runtime is named so an install that predates the move is obvious.
+NODE=/data/browser/node/bin/node
+LOCAL_NODE=/data/mpc-agent/runtime/node/bin/node
 if [ -x "$NODE" ]; then
-  say require node "PASS $("$NODE" --version 2>/dev/null)"
+  say identity node "$("$NODE" --version 2>/dev/null) at $NODE"
+elif [ -x "$LOCAL_NODE" ]; then
+  say identity node "none at $NODE (borrowed $("$LOCAL_NODE" --version 2>/dev/null) at $LOCAL_NODE)"
 else
-  say require node "FAIL no node at $NODE, see INSTALL.md prerequisites"
+  say identity node "not installed yet, deploy/install-node.sh fetches one"
 fi
 REMOTE
 ) || true

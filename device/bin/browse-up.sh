@@ -7,7 +7,10 @@
 # reloads its current project on start.
 R=/data/browser
 S=$R/sysroot
-NODE=/data/mpc-agent/runtime/node/bin/node
+# This project's own runtime, put there by deploy/install-node.sh. It used to point at
+# /data/mpc-agent/runtime/node/bin/node, which is another project's business and absent
+# on any MPC that does not have it.
+NODE=$R/node/bin/node
 
 mkdir -p "$R/run" "$S/run/xdg"
 chmod 700 "$S/run/xdg"

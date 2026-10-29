@@ -7,13 +7,14 @@ Documentation=file:/data/browser/README.md
 # in a queued start job forever, with nothing in the journal to say why. That is
 # exactly how the first version of this unit looked enabled-but-dead after a reboot.
 # The toggle binds 0.0.0.0 and needs no address to listen.
-After=mpc-agent.service
-# The toggle and its Node runtime both live on /data, not the tiny root filesystem.
+# The toggle and its Node runtime both live on /data, not the tiny root filesystem. The
+# runtime is this project's own (/data/browser/node, installed by deploy/install-node.sh),
+# so nothing here depends on any other project being installed on the device.
 RequiresMountsFor=/data
 
 [Service]
 Type=simple
-ExecStart=/data/mpc-agent/runtime/node/bin/node /data/browser/bin/control-server.js
+ExecStart=/data/browser/node/bin/node /data/browser/bin/control-server.js
 # KillMode=process, not the default control-group. browse-up.sh is spawned by this
 # server, so weston and Chromium end up in this unit's cgroup; the default would
 # kill a live browsing session whenever the unit restarts (deploy, or a node crash

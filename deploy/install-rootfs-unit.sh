@@ -18,9 +18,14 @@ DEV=/dev/mmcblk0p6
 MNT=/mnt/fw-root
 UNIT_PATH=etc/systemd/system/mpc-browse.service
 WANT_PATH=etc/systemd/system/multi-user.target.wants/mpc-browse.service
+# The ExecStart this unit was installed with before the Node runtime moved to
+# /data/browser/node. Devices installed earlier still carry it in the rootfs, and
+# refusing to replace it would leave a unit pointing at a path this project no
+# longer owns (or, worse, at nothing at all).
+LEGACY_EXEC='/data/mpc-agent/runtime/node/bin/node /data/browser/bin/control-server.js'
 
 [ -f "$SRC" ] || { echo "FAIL: missing $SRC"; exit 1; }
-grep -q '^ExecStart=/data/mpc-agent/runtime/node/bin/node /data/browser/bin/control-server.js$' "$SRC" \
+grep -q '^ExecStart=/data/browser/node/bin/node /data/browser/bin/control-server.js$' "$SRC" \
   || { echo "FAIL: $SRC does not look like the mpc-browse unit"; exit 1; }
 
 FREE_KB=$(df -k / | awk 'NR==2 {print $4}')
@@ -51,8 +56,12 @@ if [ -f "$MNT/$UNIT_PATH" ]; then
     # same unit name, same ExecStart. Anything else is somebody else's file.
     OLD_EXEC=$(sed -n 's/^ExecStart=//p' "$MNT/$UNIT_PATH")
     NEW_EXEC=$(sed -n 's/^ExecStart=//p' "$SRC")
-    if [ -n "$OLD_EXEC" ] && [ "$OLD_EXEC" = "$NEW_EXEC" ]; then
-      echo "note: replacing an older revision of our unit (ExecStart matches)"
+    if [ -n "$OLD_EXEC" ] && { [ "$OLD_EXEC" = "$NEW_EXEC" ] || [ "$OLD_EXEC" = "$LEGACY_EXEC" ]; }; then
+      if [ "$OLD_EXEC" = "$LEGACY_EXEC" ]; then
+        echo "note: replacing the revision that ran Node from /data/mpc-agent"
+      else
+        echo "note: replacing an older revision of our unit (ExecStart matches)"
+      fi
     else
       echo "FAIL: $DEV/$UNIT_PATH exists and is not our unit, refusing to overwrite"
       echo "      on disk: ${OLD_EXEC:-<no ExecStart>}"

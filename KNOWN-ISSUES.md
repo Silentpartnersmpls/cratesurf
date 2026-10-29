@@ -132,12 +132,15 @@ before every launch, because Chromium reloads the registered copy instead of the
 
 ## Installation and upkeep
 
-### [MED] The Node runtime path is hardcoded
-`device/bin/browse-up.sh` and `device/mpc-browse.service` both expect
-`/data/mpc-agent/runtime/node/bin/node` (Node v22 here). Without it the toggle, the launcher, the
-exit endpoint and the recorder do not run. See
-[INSTALL.md](INSTALL.md#prerequisites) for how to supply one or move the path. Making this a single
-setting instead of three places is an obvious first contribution.
+### [LOW] The Node runtime is a 105 MB download this project owns
+The firmware ships no Node, and an earlier version borrowed the one at
+`/data/mpc-agent/runtime/node/bin/node`, which quietly made CrateSurf depend on that other project
+being installed. `deploy/install-node.sh` now fetches a pinned official armv7 build (v22.23.4,
+sha256 checked) to `/data/browser/node/bin/node`, so the install needs no second project, but it does
+cost ~105 MB on `/data` and a ~25 MB download on your computer the first time.
+
+The path is still written in two files, `device/bin/browse-up.sh` and `device/mpc-browse.service`.
+Collapsing it into one setting is an obvious first contribution; nothing breaks by leaving it.
 
 ### [MED] A firmware update will wipe the boot entry
 `install-service.sh --boot` writes the unit into the read-only firmware rootfs, because a unit that

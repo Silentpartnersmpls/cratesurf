@@ -108,8 +108,10 @@ specific combination, and a device has to have all of it:
   `systemctl status acvs`.
 - **Root SSH access.** This project does not provide any way to get that; if you do not already
   have it, you are done before you start.
-- **A Node.js runtime at `/data/mpc-agent/runtime/node/bin/node`** (v22 here). See
-  [INSTALL.md](INSTALL.md#prerequisites) for what to do if you do not have one there.
+- **Nothing else installed.** The firmware ships no Node, so the project brings its own: one
+  official armv7 binary, pinned and checksummed, at `/data/browser/node/bin/node`. Everything else
+  runs from the Debian chroot the project builds. See
+  [INSTALL.md](INSTALL.md#prerequisites).
 
 Other RK3288-era MPCs (Live, Live II, X) are the plausible candidates, and they are plausible
 rather than supported: different panel connectors, different partition layouts and different

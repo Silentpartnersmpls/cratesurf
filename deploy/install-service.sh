@@ -11,6 +11,10 @@ SSH="ssh -o BatchMode=yes -o StrictHostKeyChecking=no"
 SCP="scp -q -o BatchMode=yes -o StrictHostKeyChecking=no"
 BOOT=${1:-}
 
+# The unit's ExecStart is /data/browser/node/bin/node, so make sure that binary is there.
+# Without this, install-service.sh on its own leaves an active-but-crashing unit.
+"$HERE/install-node.sh"
+
 $SCP "$HERE/../device/mpc-browse.service" "$HOST:/data/browser/mpc-browse.service"
 $SCP "$HERE/install-rootfs-unit.sh" "$HOST:/data/browser/install-rootfs-unit.sh"
 

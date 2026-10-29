@@ -115,7 +115,7 @@ keyboard and mouse over `/dev/uhid`:
 
 ```sh
 printf 'type hi there\nkey ctrl+l\npause 500\n' | \
-  ssh $MPC_HOST 'PATH=/data/mpc-agent/runtime/node/bin:$PATH node /data/browser/bin/hid-inject.js'
+  ssh $MPC_HOST '/data/browser/node/bin/node /data/browser/bin/hid-inject.js'
 ```
 
 `abs x y` exists because libinput's pointer acceleration makes straight relative moves overshoot;
@@ -128,7 +128,7 @@ command, so point it at a stub that appends to a file:
 ssh $MPC_HOST 'systemctl stop mpc-browse
   printf "#!/bin/sh\necho fired >> /tmp/gesture.log\n" > /tmp/fake-launch.sh
   chmod +x /tmp/fake-launch.sh
-  MPC_BROWSE_UP=/tmp/fake-launch.sh /data/mpc-agent/runtime/node/bin/node /data/browser/bin/touch-launcher.js > /tmp/launcher.log 2>&1 &
+  MPC_BROWSE_UP=/tmp/fake-launch.sh /data/browser/node/bin/node /data/browser/bin/touch-launcher.js > /tmp/launcher.log 2>&1 &
   /tmp/touch3 hold 3500 3 ; cat /tmp/gesture.log ; systemctl start mpc-browse'
 ```
 

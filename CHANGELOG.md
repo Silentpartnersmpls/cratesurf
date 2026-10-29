@@ -48,12 +48,16 @@ boot after two cold reboots; the bar survives an ad with `z-index: 2147483647`; 
 produces a WAV whose loudest bin is exactly the 440 Hz the page was playing; the launch gesture
 fires four runs in a row from a synthetic digitizer spaced like a hand.
 
+Also confirmed with real hardware in the loop, not a simulation: **the three-finger hold launches
+browse mode with actual fingers, repeatedly**; **a USB keyboard** drives the bar and `Ctrl+Alt+B`,
+including hotplug mid-session; and **downloads land as complete, playable files** in the sample
+library, from ordinary sites, with a 300 MB transfer finishing in the panel with live progress.
+
 ### Known gaps at this tag
 
-See [KNOWN-ISSUES.md](KNOWN-ISSUES.md) for the full list. The ones worth repeating: no real hand has
-fired the gesture, no physical keyboard or mouse has been in a port, nobody has listened to the
-output with ears, the 8798 toggle has no authentication, and unsaved MPC projects are still only
-partly protected by autosave.
+See [KNOWN-ISSUES.md](KNOWN-ISSUES.md) for the full list. The ones worth repeating: no physical
+mouse has been in a port, nobody has listened to the output with ears, the 8798 toggle has no
+authentication, and unsaved MPC projects are still only partly protected by autosave.
 
 ### Notes
 

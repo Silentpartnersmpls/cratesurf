@@ -13,7 +13,7 @@ instead of shuttling files across from a computer.
 
 **Version 0.1.0-alpha** · MIT licensed · built for the MPC One+ (Gen 1), tested on exactly one unit
 
-![The CrateSurf start page on the MPC panel](docs/screenshot.png)
+![The CrateSurf start page on the MPC panel](docs/start-page.png)
 
 > **Your MPC ships with no browser.** Samples live on the internet, the MPC is where you chop
 them, and the wire between those two facts was a USB stick and a laptop. That is the whole
@@ -159,7 +159,12 @@ Then, on the MPC itself, hold **three fingers on the glass for 2.5 seconds**, or
 Every step, every prerequisite, what each one writes, how to verify it and how to remove it again
 is in **[INSTALL.md](INSTALL.md)**. Follow that rather than improvising; the order matters.
 
-![The REC button recording the browser's own output](docs/recorder.png)
+**And yes, this is the hard part.** That block assumes root SSH on a device with no terminal app, and
+a Debian box with a package manager on another machine. It works and it is reversible, but if you
+are looking at it going "hell nah", that is a completely fair reaction, and the graphical installer
+in [ROADMAP.md](ROADMAP.md) is aimed straight at you.
+
+![The REC button recording the browser's own output](docs/rec-take.png)
 
 ## Using it
 
@@ -199,15 +204,43 @@ Alpha means there is a list, and it is written down instead of discovered by you
 
 1. Saving first is on you, always (see risk 1 at the top).
 2. The port 8798 toggle has no authentication.
-3. No physical keyboard or mouse has ever been plugged into the tested unit. Both are proven
-   through the kernel's real input paths (synthetic HID and a synthetic multi-touch digitizer), but
-   the last inch, a cable in a port, is unproven.
-4. A real hand has never completed the three-finger launch gesture. The detector is unit-tested and
-   fires reliably from a synthetic digitizer spaced the way a hand spaces its fingers, but nobody
-   has fired it with fingers yet. If a hold is refused, `HOLD_MS` in
-   `device/bin/touch-launcher.js` is the knob.
+3. No physical mouse has been in a port on the tested unit. A **keyboard** has, and works, hotplug
+   and all. The pointer path is proven through the kernel's own input stack with synthetic HID; the
+   last inch, a cable in a port, is what has not been tried.
+4. The three-finger hold can fire from a hand resting on the panel. Duration is the only thing left
+   separating a deliberate hold from a hand sitting still for 2.5 s, and that is an accepted trade.
+   `HOLD_MS` in `device/bin/touch-launcher.js` is the knob.
 5. Pages are usable, not snappy. There is no GPU: the Mali driver here is a vendor blob, so
    Chromium rasterises in software on an RK3288.
+
+## What has actually been tested
+
+On the unit, by a person, not simulated:
+
+- **A USB keyboard**, plugged into the MPC, driving the browser and the bar, including hotplug in
+  the middle of a session and `Ctrl+Alt+B` as a way in.
+- **The three-finger hold**, with real fingers on the glass, repeatedly. It is also unit-tested and
+  fires from a synthetic digitizer, but the fingers are the part that counts and they work.
+- **Downloads**, from real sites, landing in `MPC Documents/Samples` and being there afterwards,
+  including a 300 MB file with live progress in the panel. What lands is a complete, playable file,
+  not a zero-byte stub.
+- **REC**, producing a WAV whose loudest bin is exactly the frequency the page was playing.
+- **Getting back out**, by the MPC button and by the start page, with the MPC app returning.
+- **Boot persistence**, surviving two cold reboots.
+
+Still unproven, and written up rather than glossed: a physical mouse, and whether the sound is any
+good to human ears. Both are in [KNOWN-ISSUES.md](KNOWN-ISSUES.md).
+
+## What is coming
+
+[ROADMAP.md](ROADMAP.md) has the list. The short version, because these are the things people ask
+for first: a real **download manager** (finished, failed, retry, cancel, sizes before you commit),
+**unpacking archives on the device** so a `.zip` of sample packs does not need a computer in the
+middle, and **choosing where a download goes** instead of everything landing in the library.
+
+And the one that matters most for anyone finding this repo cold: **a graphical installer**. The
+build-a-chroot-over-SSH route below is honest and it works, but it is a lot to ask before you have
+seen a browser, and we know it. A GUI installer and a USB-stick route are the next pass.
 
 ## Contributing
 

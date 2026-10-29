@@ -52,18 +52,24 @@ Browse the sample sites, not the open sewer.
 
 ## Unproven hardware paths
 
-### [MED] No physical keyboard or mouse has ever been plugged into the tested unit
-Every layer between the port and the page is proven with a synthetic HID device over `/dev/uhid`,
-which is the same kernel path a real keyboard takes (`usbhid` → `hid-generic` → libinput →
-weston), including hotplug and keymap. What is unproven is the last inch: a cable in a port.
-If a keyboard does nothing, that is a fact worth reporting, and `device/keys.html` on the device
-(`file:///opt/keys.html` once browse mode is up) shows whether events are arriving at all.
+### [MED] No physical mouse has been in a port on the tested unit
+**A keyboard has, and it works**, including hotplug in the middle of a session and `Ctrl+Alt+B` as a
+way in; that is tested with a real keyboard, not only synthetic HID. The pointer is the one that has
+only been proven through the kernel's own input stack with a synthetic HID device over `/dev/uhid`,
+which is the same path a real mouse takes (`usbhid` → `hid-generic` → libinput → weston). What is
+unproven for a mouse is the last inch: a cable in a port.
 
-### [MED] A real hand has never completed the three-finger launch gesture
-The detector is unit-tested (`touch-launcher.js --test`, nine cases), the touchscreen's real event
-stream has been recorded off `/dev/input/event0`, and the gesture fires reliably from a synthetic
-digitizer holding its contacts ~90 units apart, which is where a hand puts them. Nobody has held
-three real fingers on the glass and watched it fire.
+If an input device does nothing, that is a fact worth reporting, and `device/keys.html` on the
+device (`file:///opt/keys.html` once browse mode is up) shows whether events are arriving at all.
+
+### [LOW] The three-finger launch gesture: works with a real hand, but it is duration-only
+**This one is tested and it works.** Three real fingers on the glass for 2.5 s launches browse mode,
+repeatedly, and it has been done that way many times on the tested unit. It is also unit-tested
+(`touch-launcher.js --test`, nine cases) and fired from a synthetic digitizer holding its contacts
+about 90 units apart, which is where a hand puts them.
+
+The catch is the next section: because position is not part of the gesture any more, a hand resting
+on the panel can satisfy it.
 
 **If a hold is refused, raise `HOLD_MS`** in `device/bin/touch-launcher.js`. Do not re-add the
 spatial rules that were removed; they were removed because a real hand fails them.
@@ -153,7 +159,9 @@ Examples use `root@mpc-one-mk2` as the default host. Set `MPC_HOST` and every sc
 
 ## Missing features
 
-Not bugs, absences. These are the things people ask for first:
+Not bugs, absences. These are the things people ask for first. The ones with real work behind them
+are tracked in [ROADMAP.md](ROADMAP.md), which is where to look for the download manager, archive
+unpacking, the save-location picker and the graphical installer.
 
 - **No tabs and no omnibox.** One page at a time. The bar covers back/forward/reload/home, and the
   start page covers typed addresses.
@@ -170,6 +178,14 @@ Not bugs, absences. These are the things people ask for first:
   oversight.
 - **No CI, no automated tests that run without the hardware.** There is no emulator for this
   device's panel or input stack.
+- **No download manager to speak of.** The panel shows the transfer in flight; there is no history,
+  no retry, no cancel, no way to see a file's size before you start.
+- **No way to unpack an archive on the device.** A `.zip` of sample packs has to be unpacked
+  somewhere else and moved back.
+- **No choice about where a download lands.** Everything goes to the sample library, which is
+  usually right and not always right.
+- **No graphical installer.** The install is scripts and SSH, and that is the biggest reason people
+  close the tab.
 
 ---
 

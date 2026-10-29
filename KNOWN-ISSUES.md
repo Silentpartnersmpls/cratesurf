@@ -50,7 +50,9 @@ Browse the sample sites, not the open sewer.
 
 ---
 
-## Unproven hardware paths
+## Hardware paths
+
+What is proven with real hardware in the loop and what is not, kept honest in both directions.
 
 ### [MED] No physical mouse has been in a port on the tested unit
 **A keyboard has, and it works**, including hotplug in the middle of a session and `Ctrl+Alt+B` as a
@@ -84,11 +86,13 @@ It moves and clicks at the right coordinates, and weston logs no cursor-theme fa
 cursor is drawn on a hardware plane and the screenshot path reads only the primary framebuffer, so
 no capture shows it.
 
-### [LOW] Nobody has listened to it with ears
-Audio is verified at the signal level: `pactl` shows the `codec` sink RUNNING with a `Chromium`
-sink-input, and the ALSA PCM under PulseAudio has `hw_ptr` advancing. That proves audio reaches the
-codec. Whether it comes out of the speakers loud and unmuffled was never confirmed by a person.
-Card 1 exposes no ALSA mixer elements, so if it is quiet there is no software knob.
+### [LOW] There is no hardware volume control
+**Audio itself is tested and it works**: it has been listened to on the unit's own output, not only
+measured at the signal level (`pactl` shows the `codec` sink RUNNING with a `Chromium` sink-input and
+the ALSA PCM under PulseAudio has `hw_ptr` advancing).
+What is missing is a knob. Card 1 exposes no ALSA mixer elements, so PulseAudio's sink volume is the
+only control there is, and if a particular page comes out quiet there is nothing on the device to
+turn up.
 
 ---
 

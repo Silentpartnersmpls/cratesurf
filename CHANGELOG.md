@@ -51,13 +51,15 @@ fires four runs in a row from a synthetic digitizer spaced like a hand.
 Also confirmed with real hardware in the loop, not a simulation: **the three-finger hold launches
 browse mode with actual fingers, repeatedly**; **a USB keyboard** drives the bar and `Ctrl+Alt+B`,
 including hotplug mid-session; and **downloads land as complete, playable files** in the sample
-library, from ordinary sites, with a 300 MB transfer finishing in the panel with live progress.
+library, from ordinary sites, with a 300 MB transfer finishing in the panel with live progress; and
+**sound has been listened to on the unit**, so audio is confirmed by ear and not only by `hw_ptr`
+moving.
 
 ### Known gaps at this tag
 
 See [KNOWN-ISSUES.md](KNOWN-ISSUES.md) for the full list. The ones worth repeating: no physical
-mouse has been in a port, nobody has listened to the output with ears, the 8798 toggle has no
-authentication, and unsaved MPC projects are still only partly protected by autosave.
+mouse has been in a port, the 8798 toggle has no authentication, there is no hardware volume
+control, and unsaved MPC projects are still only partly protected by autosave.
 
 ### Notes
 

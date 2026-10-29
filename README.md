@@ -226,10 +226,12 @@ On the unit, by a person, not simulated:
   not a zero-byte stub.
 - **REC**, producing a WAV whose loudest bin is exactly the frequency the page was playing.
 - **Getting back out**, by the MPC button and by the start page, with the MPC app returning.
+- **Sound**, listened to on the unit's own output. Audio was already proven at the signal level
+  (`hw_ptr` advancing); it has since been heard, so this is not a number pretending to be a sound.
 - **Boot persistence**, surviving two cold reboots.
 
-Still unproven, and written up rather than glossed: a physical mouse, and whether the sound is any
-good to human ears. Both are in [KNOWN-ISSUES.md](KNOWN-ISSUES.md).
+What is left unproven is one thing: a physical **mouse**. That is in
+[KNOWN-ISSUES.md](KNOWN-ISSUES.md), along with the things that are missing rather than untested.
 
 ## What is coming
 

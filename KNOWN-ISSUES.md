@@ -113,6 +113,18 @@ Kiosk mode paints no download shelf or bubble, and there is no way to turn one o
 download button carries a count badge and the panel opens by itself when a download starts. If the
 bar is missing on a page (it does not run on `file://`), use the start page's downloads link.
 
+### [LOW] Unpacking is zip only, and only the parts of zip a sample pack uses
+A finished `.zip` gets an **UNPACK** button and the pack lands in the sample folder as a folder the
+MPC can read. Inside a zip it handles stored and deflate entries, which is what sample packs are.
+Refused before anything is written, with the reason on the row: a password, a compression method
+zlib does not have (PPMd, LZMA, bzip2 inside a zip), a multi-disk archive, an entry name that would
+write outside the folder, and a pack bigger than the free space. There is no tar, gzip or rar.
+
+The unpack runs on the device's own CPU, one file at a time: a 700 MB pack is minutes, not seconds,
+and the row's counter is the only progress there is. Member names are read as UTF-8 whatever the
+archive's flag says, so a pack made by an old Windows tool with non-ASCII names may unpack them as
+mojibake.
+
 ### [MED] Some downloads will simply be refused
 Chromium blocks downloads from `file://` pages, and blocks `.zip`-style downloads served over
 plain `http://`. Sample sites are HTTPS; `127.0.0.1` counts as secure. Nothing to fix, just expect
@@ -186,11 +198,10 @@ unpacking, the save-location picker and the graphical installer.
 - **No CI, no automated tests that run without the hardware.** There is no emulator for this
   device's panel or input stack.
 - **No size before you commit to a download.** The panel now has the history, the reason a
-  transfer stopped, cancel, retry, drop, free space and a check that a finished file is still in the
-  folder (all pressed by hand on the unit), but a 300 MB pack still starts before you know how big
-  it is. Kiosk mode gives the page no way to ask first.
-- **No way to unpack an archive on the device.** A `.zip` of sample packs has to be unpacked
-  somewhere else and moved back.
+  transfer stopped, cancel, retry, drop, unpacking, free space and a check that a finished file is
+  still in the folder (all pressed by hand on the unit), but a 300 MB pack still starts before you
+  know how big it is. Kiosk mode gives the page no way to ask first.
+- **No tar or rar.** Unpacking is zip only; a `.tar.gz` pack still needs a computer in the middle.
 - **No choice about where a download lands.** Everything goes to the sample library, which is
   usually right and not always right.
 - **No graphical installer.** The install is scripts and SSH, and that is the biggest reason people

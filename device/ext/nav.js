@@ -213,6 +213,13 @@
   const plist = $('.plist');
   const freeEl = $('.phead .free');
 
+  // Unpack jobs by file name. The list is redrawn from Chromium's download table
+  // every two seconds, so anything a row needs to say beyond that has to live
+  // somewhere that survives the redraw, or it disappears mid-unpack.
+  const unpacked = new Map();
+  let lastItems = [];
+  let unpackTimer = null;
+
   // A page opened cold has nothing to go back to, so back falls through to the
   // start page instead of doing nothing, and neither arrow is ever disabled.
   const goBack = () => {
@@ -249,8 +256,9 @@
     ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
   // Only these can be opened in the browser: an audio file plays in the tab, a zip
-  // would just download itself again.
+  // would just download itself again - so a zip gets unpacked instead.
   const PLAYABLE = /\.(wav|mp3|ogg|flac|m4a|aif|aiff|mid)$/i;
+  const UNPACKABLE = /\.zip$/i;
 
   const dlBtn = (act, d, text, go) =>
     '<button data-act="' + act + '" data-id="' + d.id + '" data-name="' + esc(d.name) + '"' +
@@ -267,16 +275,34 @@
     }
     plist.innerHTML = items.map((d) => {
       const pct = d.total ? Math.min(100, Math.round((d.done / d.total) * 100)) : 0;
-      let label, acts = '';
+      let label, acts = '', barHtml = '';
       if (d.state === 'complete') {
         const gone = d.exists === false;
         label = fmtBytes(d.done) + ' saved' +
           (gone ? ' · <span class="err">gone from the folder</span>' : '');
-        if (PLAYABLE.test(d.name) && !gone) acts = dlBtn('dlopen', d, 'PLAY', true);
         // Same retry as an interrupted one: the file was deleted or moved after it
         // landed, and a row that only says so with no way forward is the dead end
         // this panel is meant to remove.
-        if (gone && /^https?:/i.test(d.url || '')) acts = dlBtn('dlretry', d, 'GET AGAIN', true);
+        if (gone) {
+          acts = (/^https?:/i.test(d.url || '') ? dlBtn('dlretry', d, 'GET AGAIN', true) : '') +
+            dlBtn('dlerase', d, 'DROP');
+        } else if (PLAYABLE.test(d.name)) {
+          acts = dlBtn('dlopen', d, 'PLAY', true) + dlBtn('dlerase', d, 'DROP');
+        } else if (UNPACKABLE.test(d.name)) {
+          const job = unpacked.get(d.name);
+          if (job && job.state === 'running') {
+            const up = job.bytes ? Math.min(100, Math.round((job.written / job.bytes) * 100)) : 0;
+            label = 'unpacking ' + job.done + ' of ' + job.count + ' files · ' + up + '%';
+            acts = '<button disabled>UNPACKING</button>';
+            barHtml = '<div class="bar2"><div class="fill" style="width:' + up + '%"></div></div>';
+          } else {
+            acts = dlBtn('unpack', d, 'UNPACK', true) + dlBtn('dlerase', d, 'DROP');
+            if (job && job.state === 'done') label += ' · unpacked into ' + esc(job.dest);
+            if (job && job.state === 'failed') {
+              label += ' · <span class="err">' + esc(job.error) + '</span>';
+            }
+          }
+        }
       } else if (d.state === 'interrupted') {
         // reason is the worker's plain-English version of Chromium's error enum.
         label = '<span class="err">' + esc(d.reason || d.error || 'it stopped') + '</span>';
@@ -285,8 +311,9 @@
         label = fmtBytes(d.done) + (d.total ? ' of ' + fmtBytes(d.total) + ' · ' + pct + '%' : ' of unknown size');
         acts = dlBtn('dlcancel', d, 'CANCEL');
       }
-      const barHtml = d.state === 'in_progress'
-        ? '<div class="bar2"><div class="fill" style="width:' + pct + '%"></div></div>' : '';
+      if (d.state === 'in_progress') {
+        barHtml = '<div class="bar2"><div class="fill" style="width:' + pct + '%"></div></div>';
+      }
       return '<div class="row"><div class="name">' + esc(d.name) + '</div>' +
              '<div class="meta">' + label + '</div>' + barHtml +
              (acts ? '<div class="acts">' + acts + '</div>' : '') + '</div>';
@@ -320,6 +347,38 @@
 
   // Cancel, retry and drop all answer through the worker, then the list is redrawn
   // from what Chromium actually did rather than from what was asked for.
+  // Unpacking is the step that used to need a computer: the zip is on the device
+  // and the folder the MPC reads is on the device, so the only missing part was
+  // something to open it. A pack is hundreds of files, so the start answers with a
+  // job and the loop below follows it - including when the panel is shut, because
+  // the toast at the end is the only confirmation you get.
+  const startUnpack = async (name) => {
+    unpacked.set(name, { state: 'running', dest: '', count: 0, done: 0, written: 0, bytes: 0 });
+    renderList(lastItems);
+    const j = await ask({ kind: 'unpack', name });
+    if (j && j.state) unpacked.set(name, j);
+    if (j && j.state === 'failed') say('unpack failed: ' + j.error);
+    renderList(lastItems);
+    clearTimeout(unpackTimer);
+    unpackTimer = setTimeout(unpackLoop, 1200);
+  };
+
+  const unpackLoop = async () => {
+    clearTimeout(unpackTimer);
+    const running = [...unpacked.keys()].filter((n) => unpacked.get(n).state === 'running');
+    for (const name of running) {
+      const j = await ask({ kind: 'unpack-status', name });
+      if (!j || !j.state || j.state === 'none') continue;
+      unpacked.set(name, j);
+      if (j.state === 'failed') say('unpack failed: ' + j.error);
+      if (j.state === 'done') say('unpacked ' + j.count + ' files into ' + j.dest);
+    }
+    if (panel.dataset.open === '1') renderList(lastItems);
+    if ([...unpacked.values()].some((j) => j.state === 'running')) {
+      unpackTimer = setTimeout(unpackLoop, 1200);
+    }
+  };
+
   const dlAction = async (kind, btn) => {
     const id = Number(btn.dataset.id);
     btn.disabled = true;
@@ -410,6 +469,7 @@
   let lastActive = 0;
   const poll = async () => {
     const items = await askDownloads();
+    lastItems = items;
     const active = items.filter((d) => d.state === 'in_progress').length;
     if (active > 0) {
       badge.hidden = false;
@@ -467,6 +527,7 @@
     else if (act === 'dlretry') dlAction('dl-retry', btn);
     else if (act === 'dlerase') dlAction('dl-erase', btn);
     else if (act === 'dlopen') location.assign(FILES + '/' + encodeURIComponent(btn.dataset.name));
+    else if (act === 'unpack') startUnpack(btn.dataset.name);
     else if (act === 'hide') setCollapsed(true);
     else if (btn.classList.contains('tab')) setCollapsed(false);
     else if (btn.classList.contains('pclose')) closePanel();

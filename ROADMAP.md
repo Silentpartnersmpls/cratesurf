@@ -11,15 +11,20 @@ everything around them.
 - **A real download manager. Done, apart from one thing.** The panel lists running, stopped and
   finished downloads as three different things: running has percent and **CANCEL**, stopped has the
   reason in plain words with **RETRY** and **DROP**, finished has its size with **PLAY** for audio
-  and **GET AGAIN** when the file has left the folder. Free space in the sample folder sits in the
-  panel title, so a 300 MB pack is not started on 40 MB of room. Still missing: the size **before**
-  you commit, which needs a request per link before the browser is asked for it, and a place on a
-  page that is not ours to show the answer.
-- **Unpack archives on the device.** Half the sample packs on the internet are a `.zip` with folders
-  in it. Right now that means download it, then go find a computer, then come back. The plan is to
-  unpack inside the browser: a `.zip` arrives, the bar offers to expand it into a folder in the
-  sample library, and the MPC sees the whole pack. Same for the common tar flavours if they are
-  worth the bytes.
+  and **UNPACK** for a zip, plus **DROP** (forget the row, never the file) and **GET AGAIN** when
+  the file has left the folder. Free space in the sample folder sits in the panel title, so a 300 MB
+  pack is not started on 40 MB of room. Still missing: the size **before** you commit, which needs a
+  request per link before the browser is asked for it, and a place on a page that is not ours to
+  show the answer.
+- **Unpack archives on the device. Done.** Half the sample packs on the internet are a `.zip` with
+  folders in it, and that used to mean download it, go find a computer, come back. A finished zip
+  now offers **UNPACK** and the pack appears in the sample folder in a form the MPC reads, folded
+  out of its own single top folder rather than nested twice. The reading is `device/bin/unpack.js`
+  on Node's own `zlib`, so there is no unzip binary to install and no firmware detail to depend on;
+  it counts files while it runs, checks the CRC of every entry, checks free space first, refuses a
+  password, an unsupported method, a multi-disk archive or a name that escapes the destination, and
+  extracts into a scratch folder so a half-written pack never appears under the real name.
+  Still open: the tar flavours, and offering to delete the `.zip` once it is unpacked.
 - **Choose where a download goes.** Today every download goes to the sample library because that is
   the only place the MPC will look. That is right most of the time and wrong the rest of the time,
   so it needs a picker: the library by default, or a folder of your choosing, remembered per site if

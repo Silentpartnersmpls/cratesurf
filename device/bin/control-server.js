@@ -8,6 +8,7 @@
 //                are allowed to run on it (content scripts are kept off file://)
 //   /files       the download folder, listed - the "where did it go" page
 //   /files/<f>   one file out of it, for playing a sample back in the browser
+//   /unpack      expand a .zip from that folder into a folder of its own
 //
 // It also watches the input devices so browse mode can be started from the MPC
 // itself (three fingers held, or Ctrl+Alt+B) instead of from another device, and
@@ -23,6 +24,7 @@ const fs = require('fs');
 const { execFile } = require('child_process');
 const launcher = require('./touch-launcher.js');
 const { createRecorder } = require('./recorder.js');
+const unpacker = require('./unpack.js');
 
 const recorder = createRecorder();
 
@@ -112,6 +114,74 @@ function listDir(rel) {
   });
   return items;
 }
+
+// ---- unpacking ------------------------------------------------------------
+// A sample pack arrives as a zip, and unpacking it is the step that used to send
+// you to a computer. One job per file, kept after it finishes so the panel can ask
+// again after a page change; a second press while one is running joins it instead
+// of starting a duplicate that would unpack the same pack twice.
+const jobs = new Map();
+
+const jobOf = (rel) => jobs.get(rel) || { state: 'none' };
+
+const startUnpack = (rel) => {
+  const target = resolveInRoot(rel);
+  if (!target) return { state: 'failed', error: 'no such file' };
+  if (!/\.zip$/i.test(target)) return { state: 'failed', error: 'only .zip packs can be unpacked' };
+
+  const running = jobs.get(rel);
+  if (running && running.state === 'running') return running;
+
+  let info;
+  try {
+    info = unpacker.inspect(target);
+  } catch (e) {
+    const failed = { state: 'failed', error: e.message };
+    jobs.set(rel, failed);
+    console.log(`unpack ${rel} -> refused: ${e.message}`);
+    return failed;
+  }
+
+  // The zip is already on the disk, so the unpacked copy is what needs the room.
+  // Saying so now is the difference between a message and a folder half full of
+  // files when the disk runs out at 90%.
+  try {
+    const st = fs.statfsSync(FILES_ROOT);
+    const free = st.bavail * st.bsize;
+    if (info.bytes > free) {
+      const failed = {
+        state: 'failed',
+        error: `that pack needs ${bytes(info.bytes)}, the folder has ${bytes(free)} free`
+      };
+      jobs.set(rel, failed);
+      console.log(`unpack ${rel} -> refused: needs ${info.bytes}, free ${free}`);
+      return failed;
+    }
+  } catch (_) {}
+
+  const job = {
+    state: 'running', dest: info.dest, count: info.count, bytes: info.bytes,
+    done: 0, written: 0, started: Date.now()
+  };
+  jobs.set(rel, job);
+  console.log(`unpack ${rel} -> ${info.dest} (${info.count} files, ${bytes(info.bytes)})`);
+
+  unpacker.unpack(target, (p) => {
+    job.done = p.done;
+    job.written = p.written;
+  }).then((r) => {
+    job.state = 'done';
+    job.dest = r.dest;
+    job.seconds = Math.round((Date.now() - job.started) / 1000);
+    console.log(`unpack ${rel} -> done, ${r.count} files into ${r.dest} in ${job.seconds}s`);
+  }).catch((e) => {
+    job.state = 'failed';
+    job.error = e.message;
+    console.log(`unpack ${rel} -> failed: ${e.message}`);
+  });
+
+  return job;
+};
 
 // CrateSurf by SPS (silent partner smpls). Both pages below wear the same chrome
 // as the kiosk start page: dark Navigator slabs with a 1px raised bevel, a duct
@@ -299,6 +369,15 @@ http.createServer(async (req, res) => {
     } catch (e) {
       sendJson(res, { ok: false, error: e.message });
     }
+    return;
+  }
+
+  // Unpacking writes into the sample library, so it is loopback-only like the
+  // file routes: the bar asks from inside the chroot, nothing else may ask.
+  if (p === '/unpack' || p === '/unpack/status') {
+    if (!localOnly(req)) { res.writeHead(403); res.end(); return; }
+    const rel = u.searchParams.get('f') || '';
+    sendJson(res, p === '/unpack' ? startUnpack(rel) : jobOf(rel));
     return;
   }
 

@@ -178,6 +178,20 @@ chrome.runtime.onMessage.addListener((msg, _sender, respond) => {
     return true;
   }
 
+  // Unpacking a downloaded zip happens on the device, next to the sample folder,
+  // so it is the same story as the recorder: the page cannot reach 127.0.0.1 on
+  // an https site (cross-origin, and mixed content on top of that), the worker
+  // can. The answer is the job; progress is a separate poll because an unpack is
+  // hundreds of files and a request that waits for it would just time out.
+  if (msg.kind === 'unpack' || msg.kind === 'unpack-status') {
+    const route = msg.kind === 'unpack' ? 'unpack' : 'unpack/status';
+    fetch(`${API}/${route}?f=${encodeURIComponent(msg.name)}`, { cache: 'no-store' })
+      .then((r) => r.json())
+      .then((j) => respond(j))
+      .catch((e) => respond({ state: 'failed', error: e.message }));
+    return true;
+  }
+
   if (msg.kind === 'rec') {
     recCall(msg.action)
       .then((j) => respond(j))

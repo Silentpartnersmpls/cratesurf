@@ -1,9 +1,9 @@
 # CrateSurf by SPS
 
 **A real web browser on your MPC.** Chromium on the MPC One+'s own touchscreen, with sound,
-downloads that land straight in `MPC Documents/Samples`, and a navigation bar on every page
-because kiosk mode has none. Dig for samples on the machine you are going to chop them on,
-instead of shuttling files across from a computer.
+downloads that land straight in `MPC Documents/Samples` and unpack there, and a navigation bar on
+every page because kiosk mode has none. Dig for samples on the machine you are going to chop them
+on, instead of shuttling files across from a computer.
 
 [![status](https://img.shields.io/badge/status-0.1.0--alpha-e0243f?style=flat-square)](#read-this-first)
 [![tested on](https://img.shields.io/badge/tested%20on-1%20MPC%20One%2B%20Gen%201-00c8b4?style=flat-square)](#read-this-first)
@@ -187,8 +187,16 @@ session and hands the panel back, whatever the page is doing.
 paints no download bubble, so the bar's panel is the only download UI there is, and it carries the
 whole job: what is running with percent and **CANCEL**, what stopped with the reason in plain words
 and **RETRY** / **DROP**, what finished with its size and **PLAY** if it is audio, and **GET AGAIN**
-when the file has since left the folder. Free space in the sample folder is printed next to the
-title, and `FILES` opens the folder itself.
+when the file has since left the folder. **DROP** forgets the row, never the file. Free space in the
+sample folder is printed next to the title, and `FILES` opens the folder itself.
+
+**A downloaded `.zip` unpacks on the device.** The row offers **UNPACK**, the bar counts files while
+it runs, and the pack lands in the sample folder as a folder of its own - `Samples/Pack/Drums/...`,
+not `Samples/Pack/Pack/...` - so the MPC sees the whole pack without a computer in the middle. It
+refuses what it cannot do honestly rather than half-doing it: a password, a compression method zlib
+lacks, an archive whose member names try to write outside the folder, a pack bigger than the free
+space. Unpacking reads the zip in the browser's own runtime, so there is no `unzip` to install and
+no firmware detail to depend on.
 
 **REC** records whatever the browser is playing, straight into the sample folder as
 `Web Grab NNN.wav`, at 44.1 kHz 16-bit stereo. Press it, play the thing, press it again. A take
@@ -228,6 +236,10 @@ On the unit, by a person, not simulated:
 - **Downloads**, from real sites, landing in `MPC Documents/Samples` and being there afterwards,
   including a 300 MB file with live progress in the panel. What lands is a complete, playable file,
   not a zero-byte stub.
+- **Unpacking**, from the panel: a 28 MB pack of 101 files unpacked into the sample folder and then
+  compared file by file against the tree it was zipped from, 101 of 101 identical by sha256, empty
+  folder included, nothing left in a scratch folder. A zip whose names escape the destination was
+  refused with the reason on the row and nothing written.
 - **REC**, producing a WAV whose loudest bin is exactly the frequency the page was playing.
 - **Getting back out**, by the MPC button and by the start page, with the MPC app returning.
 - **Sound**, listened to on the unit's own output. Audio was already proven at the signal level
@@ -240,9 +252,9 @@ What is left unproven is one thing: a physical **mouse**. That is in
 ## What is coming
 
 [ROADMAP.md](ROADMAP.md) has the list. The short version, because these are the things people ask
-for first: a real **download manager** (finished, failed, retry, cancel, sizes before you commit),
-**unpacking archives on the device** so a `.zip` of sample packs does not need a computer in the
-middle, and **choosing where a download goes** instead of everything landing in the library.
+for first: the size **before you commit** to a download, **choosing where a download goes** instead
+of everything landing in the library, and a **graphical installer** so the first connection does
+not have to be a paragraph of shell.
 
 And the one that matters most for anyone finding this repo cold: **a graphical installer**. The
 build-a-chroot-over-SSH route above is honest and it works, but it is a lot to ask before you have
@@ -251,8 +263,8 @@ seen a browser, and we know it. A GUI installer and a USB-stick route are the ne
 ## Contributing
 
 Yes please. This thing was built in a week against one unit and there is a lot of obvious surface
-left: tabs, a keyboard-aware URL entry, better scrolling, a proper download manager, gesture
-tuning, and the whole of the untested list above.
+left: tabs, a keyboard-aware URL entry, better scrolling, tar archives, gesture tuning, and the
+whole of the untested list above.
 
 Read [CONTRIBUTING.md](CONTRIBUTING.md) first. It maps the code, explains how to test on the
 device without breaking a session, and lists the landmines that already cost someone an evening,

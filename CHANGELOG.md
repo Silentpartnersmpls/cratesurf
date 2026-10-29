@@ -8,6 +8,20 @@ The project is alpha: expect the feature list below to move faster than the vers
 
 ### Added
 
+- **Unpack a downloaded `.zip` on the device.** A finished zip row now offers **UNPACK**; the bar
+  counts files and fills a bar while it runs, and the pack appears in the sample folder as a folder
+  the MPC can read. `device/bin/unpack.js` reads the archive with Node's own `zlib` - the firmware's
+  `unzip` is BusyBox and the Debian one lives only inside the chroot, so depending on either would
+  have been a firmware detail or a sysroot rebuild for every install. It folds a pack's single top
+  folder (no `Samples/Pack/Pack/`), keeps empty folders, verifies each file's CRC so a corrupted
+  entry is not shipped as a click, refuses a password, a compression method zlib lacks, a
+  multi-disk archive or a member name that escapes the destination before writing anything, checks
+  free space against the unpacked size, and names a second unpack `Pack 2` instead of overwriting
+  the first. Extraction happens in a scratch folder and is moved into place, so a half-unpacked
+  folder never appears under the real name.
+- **DROP on finished rows.** A download that has completed could never be removed from the list, so
+  old rows accumulated with no way out. **DROP** is now on finished and gone rows too, and it still
+  only forgets the row - the file is untouched.
 - **A download manager in the bar.** The panel now treats running, stopped and finished downloads as
   three different things instead of printing the same row for all of them: running has percent and
   **CANCEL**, stopped has Chromium's error enum translated into plain words (`CRASH` reads "the

@@ -273,7 +273,7 @@ like throwing something at it, that pays for the next one. Don't feel obliged. N
 a dime and there is nothing behind the door.
 
 - **Link:** *[ add the tipping link here ]*
-- **Address / handle:** *[ add the address here ]*
+- ETH OR ETH MVs: 0x4a67aDC380dD13c592198285c10EA97de9243dBb
 
 ## Credits and license
 

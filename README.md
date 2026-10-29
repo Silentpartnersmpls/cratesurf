@@ -239,7 +239,7 @@ for first: a real **download manager** (finished, failed, retry, cancel, sizes b
 middle, and **choosing where a download goes** instead of everything landing in the library.
 
 And the one that matters most for anyone finding this repo cold: **a graphical installer**. The
-build-a-chroot-over-SSH route below is honest and it works, but it is a lot to ask before you have
+build-a-chroot-over-SSH route above is honest and it works, but it is a lot to ask before you have
 seen a browser, and we know it. A GUI installer and a USB-stick route are the next pass.
 
 ## Contributing

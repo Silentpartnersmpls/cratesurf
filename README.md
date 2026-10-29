@@ -5,9 +5,19 @@ downloads that land straight in `MPC Documents/Samples`, and a navigation bar on
 because kiosk mode has none. Dig for samples on the machine you are going to chop them on,
 instead of shuttling files across from a computer.
 
+[![status](https://img.shields.io/badge/status-0.1.0--alpha-e0243f?style=flat-square)](#read-this-first)
+[![tested on](https://img.shields.io/badge/tested%20on-1%20MPC%20One%2B%20Gen%201-00c8b4?style=flat-square)](#read-this-first)
+[![made with](https://img.shields.io/badge/made%20with-a%20browser%20that%20should%20already%20be%20there-1f2937?style=flat-square)](#why-turning-it-on-means-turning-the-mpc-off)
+[![licence](https://img.shields.io/badge/licence-MIT-3b82f6?style=flat-square)](LICENSE)
+[![CI](https://img.shields.io/badge/CI-needs%20the%20hardware-4b5563?style=flat-square)](#contributing)
+
 **Version 0.1.0-alpha** · MIT licensed · built for the MPC One+ (Gen 1), tested on exactly one unit
 
 ![The CrateSurf start page on the MPC panel](docs/screenshot.png)
+
+> **Your MPC ships with no browser.** Samples live on the internet, the MPC is where you chop
+them, and the wire between those two facts was a USB stick and a laptop. That is the whole
+reason this exists.
 
 ---
 
@@ -217,9 +227,26 @@ There is no CI. Everything here needs the hardware; a green checkmark would prov
 Every step is reversible and [INSTALL.md](INSTALL.md#uninstalling) has the exact commands,
 including removing the unit from the firmware rootfs and putting the MPC back exactly as it was.
 
+## Tip jar (optional, genuinely optional)
+
+CrateSurf is free, MIT, and stays that way. It was built for the love of the thing, not for a
+business plan, and nothing in it is gated behind money.
+
+That said: bills are real, model tokens are real, and this project runs on an unreasonable
+amount of caffeine. So if it saved you an evening of shuttling WAVs across a room and you feel
+like throwing something at it, that pays for the next one. Don't feel obliged. Nobody is owed
+a dime and there is nothing behind the door.
+
+- **Link:** *[ add the tipping link here ]*
+- **Address / handle:** *[ add the address here ]*
+
 ## Credits and license
 
 **CrateSurf by SPS** (*silent partner smpls*).
+
+Built by two of us: the human who owned the question, the hardware and every design call, and
+the AI that wrote the code and ran the tests. Both are named in
+[CONTRIBUTORS.md](CONTRIBUTORS.md).
 
 MIT licensed, see [LICENSE](LICENSE). Do what you like with it, keep the copyright line.
 

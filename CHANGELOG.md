@@ -15,7 +15,19 @@ The project is alpha: expect the feature list below to move faster than the vers
   sticky `/tmp` in the chroot on every entry, which also repairs units installed from the 0.1.0-alpha
   payload the next time they enter browse mode, and `make-payload.sh` ships an empty `sysroot/tmp`
   and refuses to pack without one. The new payload is the 0.1.0-alpha payload with exactly those two
-  changes: one patched script and one empty directory.
+  changes: the patched scripts and one empty directory.
+- **Leaving browse mode could leave the panel black.** When browse mode was started by hand
+  (`ssh root@<mpc> /data/browser/bin/browse-up.sh`, which the README documents), the stack and its exit
+  server lived in the transient unit `mpc-browse-stack`. Tapping **MPC** or **EXIT BROWSE MODE** ran
+  `browse-down.sh` from inside that unit, and its `systemctl stop mpc-browse-stack` killed the script
+  along with everything else before it reached `systemctl start acvs`. The browser went, the MPC app
+  never came back. `browse-down.sh` now moves itself into a unit of its own when it finds itself in
+  that cgroup, so it always finishes. Browse mode started by the three-finger hold, the phone toggle or
+  Ctrl+Alt+B was not affected.
+- **The MPC button could do nothing after a reboot.** `browse-up.sh` started the exit server only when
+  `run/exit.pid` did not exist, and that file lives on `/data`, so a reboot or power cut taken in
+  browse mode left it behind with nothing running. Every later session then had no exit server and no
+  working way out from the panel. It now checks that the pid really is a running exit server.
 
 ## [Unreleased]
 

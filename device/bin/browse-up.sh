@@ -118,6 +118,15 @@ done
 "$R/bin/setup-profile.sh"
 "$R/bin/chrome-up.sh" "$1"
 
+# The pid file lives on /data, so it outlives a reboot or a power cut taken in
+# browse mode. Trusting its existence alone meant the next session started no exit
+# server at all, and the MPC button and EXIT BROWSE MODE did nothing. Only a pid
+# that is running the exit server counts: after a reboot the number can belong to
+# something else entirely.
+EPID=$(cat "$R/run/exit.pid" 2>/dev/null)
+if [ -n "$EPID" ] && ! tr '\0' ' ' < "/proc/$EPID/cmdline" 2>/dev/null | grep -q 'exit-server.js'; then
+  rm -f "$R/run/exit.pid"
+fi
 if [ -x "$NODE" ] && [ ! -f "$R/run/exit.pid" ]; then
   "$NODE" "$R/bin/exit-server.js" > "$R/run/exit.out" 2>&1 &
   echo $! > "$R/run/exit.pid"

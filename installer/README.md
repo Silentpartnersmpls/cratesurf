@@ -51,6 +51,36 @@ unit is stock. Option 2 on the menu walks that through:
 The one thing it cannot do is press UPDATE on the MPC. That screen is on the
 device, and the device reboots into a flashing mode from there.
 
+## Security, spelled out
+
+**Root SSH is closed at the end of an install.** An MPC flashed with the usual SSH firmware has an
+empty root password, and sshd on it is configured to accept that: anyone on the same Wi-Fi can log in
+as root with no credentials at all. The installer uses exactly that hole to get in, and then closes
+it: it sets a random 24-character root password and prints it once, and it installs a key of its own
+so this computer (and the scripts in this repo) keep working without it.
+
+- The password is the part that matters. sshd only accepts the "none" method for an account whose
+  password field is empty, so a key on its own would not close anything.
+- The key lives at `~/.cratesurf/id_ed25519` (0600) and one `Host` entry is appended to
+  `~/.ssh/config` so plain `ssh root@<mpc>` keeps working. Nothing else on your machine is touched.
+- The password is never written to a file and never sent anywhere. It is printed, once, on screen.
+- Before the new password is trusted, the installer logs in with it and checks it is root. If that
+  fails, the old `/etc/shadow` is put back and it says so. A backup is left at
+  `/data/browser/run/shadow.bak` on the device either way.
+
+**The host key is remembered, not blindly accepted.** The first time it connects to a device it shows
+the fingerprint and asks. After that a changed key is a hard stop, because a changed key is either a
+reflash (which regenerates it) or something answering for the MPC that is not the MPC. That matters
+here more than usual: this is the connection that carries the install.
+
+**What it does not protect you from.** Port 8798 has no authentication by design (see
+[KNOWN-ISSUES.md](../KNOWN-ISSUES.md)), Chromium runs as root inside the chroot without its sandbox,
+and a rooted MPC's firmware has been modified by somebody else. Locking root down is the difference
+between a browser and a back door with a browser in it; it is not a hardened appliance.
+
+**No telemetry.** The only outbound request the installer makes is the payload download. It reports
+nothing anywhere, and it contains no identifier of you or your device.
+
 ## Options
 
 Anything the menu asks can be given on the command line, so it can be scripted:
@@ -60,7 +90,13 @@ cratesurf-installer --host 192.168.1.50              install
 cratesurf-installer --host 192.168.1.50 --check      read-only probe
 cratesurf-installer --host 192.168.1.50 --password hunter2
 cratesurf-installer --host mpc --payload ./payload.tar.gz --sha <sha256>
+cratesurf-installer --host 192.168.1.50 --harden-only    just the password and key step
+cratesurf-installer --host 192.168.1.50 --no-harden      install, leave root SSH open
+cratesurf-installer --host 192.168.1.50 --accept-host-key  never ask about an unseen host key
 ```
+
+`--harden-only` is for units installed before this existed, which are sitting on a network with an
+open root shell.
 
 `--payload` takes a local tarball or an `http(s)` URL, which is how a release
 build works: `build.sh` bakes the release URL and checksum into the binary with
@@ -76,23 +112,25 @@ node/               the pinned Node runtime the toggle runs on
 bin/                the device scripts
 mpc-browse.service  the unit
 install-rootfs-unit.sh
-```
-
-Two sources, and both are things we already have:
+```**Releases use `--release --sysroot`**, which builds from things that are in this repository and
+nobody's computer: a `build-sysroot.sh CACHE_ONLY=1` tree, the files in git, and the pinned Node
+download. That matters for privacy as much as reproducibility. A payload pulled off a working unit is
+a snapshot of that unit's filesystem, and "nothing personal was in it this time" is not a property to
+rely on for every release.
 
 ```sh
-./make-payload.sh --from-device root@mpc-one-mk2       # pull the tree off a working unit
-./make-payload.sh --sysroot /tmp/mpcsys/root           # or from ./build-sysroot.sh CACHE_ONLY=1
+./make-payload.sh --release --sysroot /tmp/mpcsys/root   # what gets published
+./make-payload.sh --from-device root@mpc-one-mk2         # internal: snapshot of one unit
 ```
 
-The device route is what the current release uses: the tree on a unit that has
-been running for weeks is a tree that is known to work on that firmware, and it
-takes a step out of the release process that could go wrong. The sysroot route
-is for building from scratch on a machine that has `apt`.
+`--from-device` still exists for testing a build of the scripts against a unit we are sitting in
+front of. It refuses to be combined with `--release`, and it says on screen that the result must not
+be published.
 
-The browser profile is deliberately left out. A profile carries a first-boot
-Chromium state from one particular machine, and `setup-profile.sh` seeds the two
-settings that actually matter (where downloads go) on every launch anyway.
+Left out of both: the browser profile (a first-boot Chromium state from one machine, reseeded by
+`setup-profile.sh` on every install), every bind-mount point, and `var/run`, which on a live unit
+holds a PulseAudio cookie from a real session. That cookie turned up in the first payload built from
+the device, which is exactly why the release path no longer starts from a device.
 
 ## Building it
 

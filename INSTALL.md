@@ -25,7 +25,10 @@ is on you.
 | About 1 GB free on `/data` | The chroot is ~775 MB, plus a browser profile | `ssh root@<mpc-ip> df -h /data` |
 | MPC on the same LAN as your computer | `ssh`, `scp` and port 8798 | `ping <mpc-ip>` |
 
-**Root SSH is not something this project provides.** If you do not already have it, stop here.
+**Root SSH is not something this project provides.** If you do not already have it, stop here. If
+you do, note that the usual SSH firmware leaves root with *no* password, which is how this gets in and
+is a hole worth closing: the installer's last step does it for you (see [installer/README.md](installer/README.md)),
+and `--harden-only` does the same on an install that already exists.
 
 **Nothing else has to be installed on the MPC.** The firmware ships no Node, so this project brings
 its own: `deploy/install-node.sh` fetches the official armv7 build, checks it against a pinned

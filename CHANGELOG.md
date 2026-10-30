@@ -17,6 +17,22 @@ The project is alpha: expect the feature list below to move faster than the vers
   it checks the firmware image, puts it on a USB stick and gives you the MPC-side keystrokes. It
   deliberately does not download or bundle a firmware image. `installer/make-payload.sh` builds the
   payload from a working unit or from a sysroot build, so a release is one file and one checksum.
+- **Root SSH is closed at the end of an install.** These units ship with an empty root password and
+  sshd configured to accept it, so anyone on the same network is root with no credentials - that is
+  how the installer gets in, and leaving it like that ships a back door. The last step sets a random
+  24-character root password, proves it works by logging in with it and checking it is root, and
+  restores the old `/etc/shadow` if it does not. It also installs a key at `~/.cratesurf/id_ed25519`
+  with one `Host` entry in `~/.ssh/config`, so repeat installs and the repo's own scripts keep
+  working. Secrets travel over stdin, never argv, so they are not visible in `ps` on the device.
+  `--harden-only` applies it to an existing install, `--no-harden` skips it.
+- **The host key is remembered instead of ignored.** The first connection shows the fingerprint and
+  asks; after that a changed key is a hard stop, since a change means either a reflash or something
+  answering for the MPC. `--accept-host-key` for scripted runs.
+- **The release payload never touches a device.** `make-payload.sh --release --sysroot` builds from a
+  `build-sysroot.sh` tree plus the files in git plus the pinned Node download, so a published
+  artifact is reproducible from the repository alone. The device route stays for internal testing and
+  says on screen that its output must not be published. `var/run` is excluded from both: it carried a
+  live PulseAudio cookie from the unit that built the first payload.
 - **Manual browse mode stops dying when the SSH session ends.** `browse-up.sh` run from a shell now
   re-execs into a transient unit of its own, and `browse-down.sh` stops that unit. See Fixed.
 

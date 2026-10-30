@@ -52,6 +52,19 @@ rather than half-installing if `/` is no longer `mmcblk0p6`.
 
 ## Security
 
+### [MED] A freshly flashed unit is root to anyone on the network
+An MPC flashed with the usual SSH firmware has an empty root password and sshd configured with
+`PermitEmptyPasswords yes`, so `ssh root@<mpc-ip>` gets in with no credentials at all - measured on
+this unit, `Authenticated ... using "none"`. On a home LAN that is a shrug; on venue or studio Wi-Fi it
+is a stranger owning the box.
+
+**The installer closes it** as its last step (random root password plus a key for the machine that
+installed it). Units set up before that step existed, or installed with `--no-harden`, are still open.
+
+**Fix:** `cratesurf-installer --host <mpc-ip> --harden-only`, or by hand: set a password with
+`passwd` over SSH. A key alone does not close it - sshd only accepts the "none" method for an account
+whose password field is empty, so the password is the part that matters.
+
 ### [HIGH, by design] The port 8798 toggle has no authentication
 It is a LAN-only convenience: anyone who can reach the port can start or stop browse mode on the
 MPC. There is no login and no token.

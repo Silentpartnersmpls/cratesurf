@@ -1,13 +1,18 @@
 #!/bin/sh
 # Build the release payload: one tarball that unpacks into /data/browser.
 #
-#   ./make-payload.sh --from-device root@mpc-one-mk2
-#   ./make-payload.sh --sysroot /tmp/mpcsys/root
+#   ./make-payload.sh --release --sysroot /tmp/mpcsys/root
+#   ./make-payload.sh --from-device root@mpc-one-mk2      (internal only)
 #
-# --from-device is the honest default: the tree on a unit that has been running
-# is a tree that works on that firmware. Building from .debs gives you the same
-# files in theory and a different Chromium build whenever Debian rolls one,
-# which is how an installer ends up shipping a browser nobody has ever run.
+# --release is what goes to other people. It builds from a sysroot that came out
+# of build-sysroot.sh plus the files in git plus the pinned Node download, so the
+# artifact is reproducible from things in the repository and nothing else. That
+# matters for privacy as much as for reproducibility: a payload pulled off a
+# working unit is a snapshot of somebody's filesystem, and "nothing personal was
+# in it this time" is not a property you want to rely on for every release.
+#
+# --from-device is for testing a build of the scripts against a unit we are
+# sitting in front of. It is not the release path and it says so.
 #
 # The output is named with the sha256 beside it, because the downloader refuses
 # anything that does not match and a release with no checksum is a release with
@@ -20,18 +25,26 @@ OUT=${OUT:-$HERE/dist}
 SRC_DEVICE=""
 SYSROOT=""
 
+RELEASE=0
 while [ $# -gt 0 ]; do
   case "$1" in
+    --release)     RELEASE=1; shift ;;
     --from-device) SRC_DEVICE=$2; shift 2 ;;
     --sysroot)     SYSROOT=$2; shift 2 ;;
-    *) echo "usage: $0 --from-device root@ip | --sysroot /path/to/root"; exit 2 ;;
+    *) echo "usage: $0 --release --sysroot DIR | --from-device root@ip"; exit 2 ;;
   esac
 done
 
 [ -n "$SRC_DEVICE" ] || [ -n "$SYSROOT" ] || {
-  echo "usage: $0 --from-device root@ip | --sysroot /path/to/root"
+  echo "usage: $0 --release --sysroot DIR | --from-device root@ip"
   exit 2
 }
+
+if [ "$RELEASE" = "1" ] && [ -n "$SRC_DEVICE" ]; then
+  echo "FAIL: --release builds from a sysroot, not from a device"
+  echo "      a payload pulled off a unit is a snapshot of that unit"
+  exit 1
+fi
 
 STAGE=$(mktemp -d)
 trap 'rm -rf "$STAGE"' EXIT
@@ -49,23 +62,50 @@ chmod +x "$STAGE/install-rootfs-unit.sh"
 
 if [ -n "$SRC_DEVICE" ]; then
   SSH="ssh -o BatchMode=yes -o StrictHostKeyChecking=no"
-  echo "== pulling the sysroot from $SRC_DEVICE (this is the slow part)"
+  echo "== INTERNAL BUILD: pulling the sysroot from $SRC_DEVICE"
+  echo "   this is a snapshot of that unit. Do not publish it."
   # --exclude for every bind mount: those are the host's /proc, /dev and
   # /media mounted inside the chroot, and archiving them either fails or
   # produces a tarball full of somebody else's device nodes.
+  # var/run is excluded for a different reason: it holds the PulseAudio cookie
+  # from a live session on that device, which has no business in a public file.
   $SSH "$SRC_DEVICE" 'cd /data/browser && tar cf - --exclude=./run \
       --exclude=./sysroot/root/chrome-profile --exclude=./sysroot/tmp \
       --exclude=./sysroot/proc --exclude=./sysroot/sys --exclude=./sysroot/dev \
       --exclude=./sysroot/downloads --exclude=./sysroot/media \
-      --exclude=./sysroot/run ./sysroot ./node' | tar -C "$STAGE" -xf -
+      --exclude=./sysroot/run --exclude=./sysroot/var/run \
+      --exclude=./sysroot/var/log \
+      ./sysroot ./node' | tar -C "$STAGE" -xf -
 else
   echo "== staging the sysroot from $SYSROOT"
+  [ -x "$SYSROOT/usr/lib/chromium/chromium" ] || {
+    echo "FAIL: $SYSROOT has no chromium binary; is that a build-sysroot.sh CACHE_ONLY=1 tree?"
+    exit 1
+  }
   mkdir -p "$STAGE/sysroot"
   cp -a "$SYSROOT"/. "$STAGE/sysroot/"
+  # Same list as the device route, plus anything a build leaves behind.
   rm -rf "$STAGE/sysroot/proc" "$STAGE/sysroot/sys" "$STAGE/sysroot/dev" \
-         "$STAGE/sysroot/root/chrome-profile" "$STAGE/sysroot/tmp"
-  echo "note: the Node runtime is not in a sysroot build."
-  echo "      run deploy/install-node.sh against the device, or copy node/ in by hand."
+         "$STAGE/sysroot/root/chrome-profile" "$STAGE/sysroot/tmp" \
+         "$STAGE/sysroot/run" "$STAGE/sysroot/var/run" "$STAGE/sysroot/var/log"
+
+  # The Node runtime is not part of a sysroot, so fetch the pinned build from
+  # nodejs.org using the version and checksum install-node.sh already owns. Two
+  # copies of that pin would drift, and the drift would be silent.
+  NODE_VERSION=$(sed -n 's/^VERSION=//p' "$REPO/deploy/install-node.sh" | head -n1)
+  NODE_SHA=$(sed -n 's/^SHA256=//p' "$REPO/deploy/install-node.sh" | head -n1)
+  [ -n "$NODE_VERSION" ] && [ -n "$NODE_SHA" ] || { echo "FAIL: no Node pin in deploy/install-node.sh"; exit 1; }
+  PKG=node-$NODE_VERSION-linux-armv7l
+  CACHE=${TMPDIR:-/tmp}/$PKG.tar.xz
+  if [ ! -f "$CACHE" ]; then
+    echo "== fetching $PKG"
+    curl -fsSL -o "$CACHE.part" "https://nodejs.org/dist/$NODE_VERSION/$PKG.tar.xz" \
+      || { rm -f "$CACHE.part"; echo "FAIL: could not download $PKG"; exit 1; }
+    mv "$CACHE.part" "$CACHE"
+  fi
+  echo "$NODE_SHA  $CACHE" | sha256sum -c - >/dev/null || { rm -f "$CACHE"; echo "FAIL: pinned Node sha256 mismatch"; exit 1; }
+  mkdir -p "$STAGE/node/bin"
+  tar -xJf "$CACHE" -C "$STAGE/node" --strip-components=1 "$PKG/bin/node" "$PKG/LICENSE"
 fi
 
 [ -x "$STAGE/node/bin/node" ] || echo "warn: no node/bin/node in the payload"

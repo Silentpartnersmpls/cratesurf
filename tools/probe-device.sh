@@ -7,7 +7,7 @@
 # It reads; it writes, mounts, stops and installs nothing. Every line it prints is a
 # fact the project depends on, and the verdict at the end is whether this device has
 # the same shape as the one unit CrateSurf was built and verified on (MPC One+ Gen 1,
-# firmware 3.4.2.13).
+# firmware 3.4.2.13 and 3.10.0.49).
 #
 # Exit status: 0 shape matches, 1 something required did not match, 2 could not reach
 # the device at all.
@@ -36,7 +36,17 @@ say identity kernel "$(uname -r)"
 say identity machine "$(uname -m)"
 say identity os "$(. /etc/os-release 2>/dev/null && echo "${PRETTY_NAME:-$NAME}")"
 say identity glibc "$(strings /lib/libc.so.6 2>/dev/null | sed -n 's/.*release version \([0-9][0-9.]*[0-9]\).*/\1/p' | sed -n 1p)"
-say identity firmware "$(strings /usr/bin/MPC 2>/dev/null | sed -n 's/^\(3\.[0-9.]*\) (.*/\1/p' | sed -n 1p)"
+# 3.10 stopped putting a version string in /usr/bin/MPC, so read the file the firmware
+# writes to disk and keep the old strings scrape only as the 3.4.x fallback.
+FW=$(sed -n 1p /usr/share/Akai/SME0/VERSION 2>/dev/null | tr -d '\r')
+[ -n "$FW" ] || FW=$(strings /usr/bin/MPC 2>/dev/null | sed -n 's/^\(3\.[0-9.]*\) (.*/\1/p' | sed -n 1p)
+say identity firmware "${FW:-not readable}"
+# Two builds have been through this. Naming them is the only thing that separates a
+# supported device from one nobody has tried, and the version is now readable here.
+case "$FW" in
+  3.4.2.13|3.10.0.49|'') ;;
+  *) say require firmware "WARN $FW has not been run; 3.4.2.13 and 3.10.0.49 have" ;;
+esac
 say identity ssh_user "$(id -un) uid=$(id -u)"
 say identity ram_mb "$(awk '/^MemTotal:/ {printf "%d", $2/1024}' /proc/meminfo)"
 say identity cpus "$(nproc 2>/dev/null || grep -c ^processor /proc/cpuinfo) online"
@@ -164,7 +174,7 @@ fails=$(printf '%s\n' "$OUT" | grep -c '^require|.*|FAIL' || true)
 warns=$(printf '%s\n' "$OUT" | grep -c '^require|.*|WARN' || true)
 
 if [ "${fails:-0}" -eq 0 ]; then
-  echo "== verdict: shape matches the tested unit (MPC One+ Gen 1, firmware 3.4.2.13)"
+  echo "== verdict: shape matches the tested unit (MPC One+ Gen 1)"
   [ "${warns:-0}" -gt 0 ] && echo "   with $warns warning(s) above"
   echo "   README.md and INSTALL.md apply. Save your project before the first switch."
   exit 0

@@ -25,6 +25,15 @@ The project is alpha: expect the feature list below to move faster than the vers
   with one `Host` entry in `~/.ssh/config`, so repeat installs and the repo's own scripts keep
   working. Secrets travel over stdin, never argv, so they are not visible in `ps` on the device.
   `--harden-only` applies it to an existing install, `--no-harden` skips it.
+- **The root password is saved on your computer, not just printed.** Losing the key file (new laptop,
+  tidied home directory, a restore that skipped dotfiles) used to be the same thing as being locked
+  out of your own MPC, because the password appeared once on screen and nowhere else. It is now
+  written to `~/.cratesurf/root-<host>.txt` (0600) beside the key, and the installer tries it before
+  prompting on later runs. If both are gone, the documented way back is a reflash of the SSH image,
+  which leaves `/data` untouched. Related and fixed in the same pass: the installer installed a key
+  for "the next run" and then never offered it, so a second install from the same computer demanded
+  a password it had no way to know. The proof that a new password works is still made with the
+  password alone, so a key cannot make a broken password look good.
 - **The host key is remembered instead of ignored.** The first connection shows the fingerprint and
   asks; after that a changed key is a hard stop, since a change means either a reflash or something
   answering for the MPC. `--accept-host-key` for scripted runs.
@@ -38,6 +47,13 @@ The project is alpha: expect the feature list below to move faster than the vers
 
 ### Fixed
 
+- **A release payload had no start page, no nav bar and no `weston.ini`.** `deploy.sh` copies
+  `device/ext`, the four `.html` pages and `device/weston.ini` into the chroot by hand, so a unit
+  that had been deployed to was fine and a payload built from a `build-sysroot.sh` tree was not: the
+  chroot half was there and the half that makes it CrateSurf was missing, which on a fresh install
+  would have meant a portrait panel with no rotation, no bar and a 404 where `/home` should be.
+  `make-payload.sh` now stages those files from the repo on both routes, and fails instead of
+  packing if any of them is absent.
 - **A browser started over SSH died seconds later, with nothing in any log.** `setsid` gives weston
   and Chromium a new session but does not move them out of their systemd *cgroup*, and sshd's session
   is its own scope: when the connection closed, systemd killed the scope and took the whole stack with
@@ -98,6 +114,13 @@ The project is alpha: expect the feature list below to move faster than the vers
 
 ### Changed
 
+- **Verified on firmware 3.10.0.49.** The October 2026 update left `/data` untouched, so the chroot,
+  the Node runtime and the scripts came through exactly as they were; the only casualty was the boot
+  copy of the unit in the read-only rootfs, which is the documented firmware-update behaviour and
+  what `deploy/install-rootfs-unit.sh` puts back. `mmcblk0p6`, `acvs.service`, `DSI-1`, `hw:1,0` and
+  the settings path were identical, so the install itself did not have to change. The one thing that
+  did: 3.10's `/usr/bin/MPC` carries no version string, so the probe reads the firmware from
+  `/usr/share/Akai/SME0/VERSION` and falls back to the old `strings` grep on 3.4.2.13.
 - **The whole `MPC Documents` tree is mounted inside the chroot at `/downloads`, and the profile's
   download directory is that root instead of `Samples`.** Chromium has no per-download directory, so
   a folder can only be chosen by putting it in front of the file name, and that needs the root as the

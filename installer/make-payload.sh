@@ -108,7 +108,24 @@ else
   tar -xJf "$CACHE" -C "$STAGE/node" --strip-components=1 "$PKG/bin/node" "$PKG/LICENSE"
 fi
 
+# The sysroot is only the Debian half. The start page, the nav-bar extension and
+# weston.ini live in the chroot at /opt and /etc/xdg, and a plain build-sysroot.sh
+# tree has neither: deploy.sh has always copied them onto a device by hand, which is
+# why a unit deployed to works and a payload built from a sysroot did not. Without
+# these a fresh install comes up on a portrait panel with no rotation, no bar and
+# nothing to serve at /home. Taken from the repo in both routes, so a payload always
+# carries the files that belong to the commit it was built from.
+echo "== staging the page, the bar and the weston config"
+mkdir -p "$STAGE/sysroot/opt/kb-ext" "$STAGE/sysroot/etc/xdg/weston"
+cp "$REPO"/device/ext/* "$STAGE/sysroot/opt/kb-ext/"
+cp "$REPO"/device/home.html "$REPO"/device/calib.html "$REPO"/device/keys.html \
+   "$REPO"/device/download-test.html "$STAGE/sysroot/opt/"
+cp "$REPO/device/weston.ini" "$STAGE/sysroot/etc/xdg/weston/weston.ini"
+
 [ -x "$STAGE/node/bin/node" ] || echo "warn: no node/bin/node in the payload"
+[ -f "$STAGE/sysroot/opt/home.html" ] || { echo "FAIL: no start page in the payload"; exit 1; }
+[ -f "$STAGE/sysroot/opt/kb-ext/manifest.json" ] || { echo "FAIL: no nav bar in the payload"; exit 1; }
+[ -f "$STAGE/sysroot/etc/xdg/weston/weston.ini" ] || { echo "FAIL: no weston.ini in the payload"; exit 1; }
 [ -x "$STAGE/sysroot/usr/lib/chromium/chromium" ] || echo "warn: no chromium binary in the payload"
 
 NAME=${NAME:-cratesurf-payload}

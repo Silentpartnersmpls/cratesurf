@@ -242,6 +242,17 @@ func connectWithRetry(host, user, pass string) (*Dev, error) {
 		}
 	}
 	if strings.Contains(lastErr.Error(), "unable to authenticate") || strings.Contains(lastErr.Error(), "no supported methods") {
+		// This computer may already have the answer on disk, from the install that
+		// set the password in the first place. Trying it first is the difference
+		// between an upgrade on a second run and being asked for a password nobody
+		// wrote down.
+		if pw, path := savedPassword(host); pw != "" {
+			note("trying the password this computer saved for %s (%s)", host, path)
+			if d, err := dial(host, user, pw); err == nil {
+				return d, nil
+			}
+			note("that one was refused, so a later install has replaced it")
+		}
 		note("that unit wants a password, it did not accept an empty one")
 		pw := askSecret("root password")
 		if pw != "" {

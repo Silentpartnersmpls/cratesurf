@@ -1,7 +1,7 @@
 # Known issues
 
 **Version 0.1.0-alpha.** Everything below is true of the current code on the one unit it has been
-run on (MPC One+ Gen 1, firmware 3.4.2.13, and again on 3.10.0.49 after the 2026-10-29 update).
+run on (MPC One+ Gen 1, on firmware 3.4.2.13 and again on 3.10.0.49 after the 2026-10-29 update).
 Nothing here is a rumour; each item says how it was
 found, what it does to you, and what to do about it.
 
@@ -64,6 +64,21 @@ installed it). Units set up before that step existed, or installed with `--no-ha
 **Fix:** `cratesurf-installer --host <mpc-ip> --harden-only`, or by hand: set a password with
 `passwd` over SSH. A key alone does not close it - sshd only accepts the "none" method for an account
 whose password field is empty, so the password is the part that matters.
+
+### [MED] Losing both the key and the saved password locks you out of root
+Hardening is a one-way door unless the credential is kept. The installer saves the generated root
+password to `~/.cratesurf/root-<host>.txt` (mode 0600) on the computer that installed, next to its
+own key, and `ssh root@<mpc>` accepts either. Until that file existed the password was printed once
+and stored nowhere, which made a deleted key file (a new laptop, a tidied home directory, a restore
+that skipped dotfiles) the same thing as losing access to your own MPC.
+
+Each `--harden-only` run generates a new password and overwrites that file, so what is on that
+computer is always the current one. `--no-harden` sets nothing and leaves this section moot.
+
+**If both are gone**, one route needs no root: reflash the SSH-enabled firmware image from a USB
+stick, which is what installer menu option 2 walks through. That replaces `/dev/mmcblk0p6` and resets
+root to the empty password the image ships with, while everything on `/data` (the chroot, the Node
+runtime, the scripts, the settings) survives untouched. Then `--harden-only` again to close it.
 
 ### [HIGH, by design] The port 8798 toggle has no authentication
 It is a LAN-only convenience: anyone who can reach the port can start or stop browse mode on the
@@ -193,10 +208,11 @@ that partition, so re-run `./deploy/install-service.sh --boot` afterwards. Every
 survives, but a new firmware may also move the partition the installer writes to; the script refuses
 to guess and will fail loudly if `/dev/mmcblk0p6` is not what it expects.
 
-### [MED] The project assumes firmware 3.4.2.13
+### [MED] The project assumes the shape of 3.4.2.13 and 3.10.0.49
 `/dev/mmcblk0p6` as the firmware rootfs, `acvs.service` as the MPC app, `DSI-1` as the panel
 connector, `hw:1,0` as the audio codec and `/data/Settings/MPC/MPC.settings` as the settings file
-are all facts about this build. A different firmware build may differ in any of them.
+are all facts about these builds. Both firmware versions were checked against every one of them and
+all five matched, so the 3.4.2.13 to 3.10.0.49 update did not move any of it. A third build may.
 
 ### [LOW] `deploy.sh` does not restart the service
 A live browsing session survives a deploy (`KillMode=process` is set for exactly that reason), and

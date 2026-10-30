@@ -24,19 +24,43 @@ type Dev struct {
 	User   string
 }
 
-// dial tries the empty password first, then the one supplied. An MPC flashed
-// with the usual SSH firmware accepts root with no password at all, and SSH's
-// "none" method covers that: the client library sends it before any auth
-// method, so a blank ssh.Password("") is simply never reached on those units.
+// dial offers the key this computer installed on the MPC, then the empty password,
+// then the one supplied. An MPC flashed with the usual SSH firmware accepts root
+// with no password at all, and SSH's "none" method covers that: the client library
+// sends it before any auth method, so a blank ssh.Password("") is simply never
+// reached on those units.
+//
+// The key goes first because on an already-hardened unit it is the only method
+// that works without asking the person for anything. It was being installed for
+// "the next run" and then never offered on that run, which meant the second
+// install from the same computer demanded a password it had no way to know.
 func dial(addr, user, pass string) (*Dev, error) {
+	return dialOpts(addr, user, pass, true)
+}
+
+// dialPassword is the same connection without this computer's key. One caller
+// needs it: the check that the password just set actually opens the door, which
+// would stop meaning anything if the key could satisfy it instead.
+func dialPassword(addr, user, pass string) (*Dev, error) {
+	return dialOpts(addr, user, pass, false)
+}
+
+func dialOpts(addr, user, pass string, withKey bool) (*Dev, error) {
 	if !strings.Contains(addr, ":") {
 		addr = net.JoinHostPort(addr, "22")
 	}
+	auth := []ssh.AuthMethod{}
+	if withKey {
+		if s := existingInstallerKey(); s != nil {
+			auth = append(auth, ssh.PublicKeys(s))
+		}
+	}
+	// Empty string included on purpose: an empty password is a real method on
+	// these devices, not a missing one.
+	auth = append(auth, ssh.Password(pass))
 	cfg := &ssh.ClientConfig{
-		User: user,
-		// Empty string included on purpose: an empty password is a real method
-		// on these devices, not a missing one.
-		Auth:            []ssh.AuthMethod{ssh.Password(pass)},
+		User:            user,
+		Auth:            auth,
 		Timeout:         12 * time.Second,
 		HostKeyCallback: hostKeyCallback(addr),
 	}

@@ -20,7 +20,7 @@ is on you.
 
 | Requirement | Why | How to check |
 | --- | --- | --- |
-| MPC One+ (Gen 1), firmware **3.4.2.13** | The only unit and build this has been run on | Main menu → Preferences → Info, or `strings /usr/bin/MPC \| grep -m1 '^3\.'` |
+| MPC One+ (Gen 1), firmware **3.4.x or 3.10.x** | The only unit this has been run on, on firmware 3.4.2.13 and again on 3.10.0.49 | Main menu → Preferences → Info, or `cat /usr/share/Akai/SME0/VERSION` on 3.10, or `strings /usr/bin/MPC \| grep -m1 '^3\.'` on 3.4 (the 3.10 binary carries no version string) |
 | Root SSH into the MPC | Everything is installed over SSH | `ssh root@<mpc-ip> 'id -u'` prints `0` |
 | About 1 GB free on `/data` | The chroot is ~775 MB, plus a browser profile | `ssh root@<mpc-ip> df -h /data` |
 | MPC on the same LAN as your computer | `ssh`, `scp` and port 8798 | `ping <mpc-ip>` |
@@ -28,7 +28,9 @@ is on you.
 **Root SSH is not something this project provides.** If you do not already have it, stop here. If
 you do, note that the usual SSH firmware leaves root with *no* password, which is how this gets in and
 is a hole worth closing: the installer's last step does it for you (see [installer/README.md](installer/README.md)),
-and `--harden-only` does the same on an install that already exists.
+and `--harden-only` does the same on an install that already exists. It saves the password it sets to
+`~/.cratesurf/root-<host>.txt` on your computer, so losing the key it installs is survivable; if that
+file goes too, [KNOWN-ISSUES.md](KNOWN-ISSUES.md) has the way back.
 
 **Nothing else has to be installed on the MPC.** The firmware ships no Node, so this project brings
 its own: `deploy/install-node.sh` fetches the official armv7 build, checks it against a pinned
@@ -97,11 +99,11 @@ Read-only. Changes nothing.
 
    model            Akai Professional MPC One+
    board            inmusic,acva2 inmusic,az05 rockchip,rk3288
-   kernel           6.6.74-az01-2025-01-23-rt47
+   kernel           6.18.44-az01-2026-08-10-rt6
    machine          armv7l
-   os               az0x (inMusic Brands AZ0x base distribution) 5.0.5 (scarthgap)
+   os               az0x (inMusic Brands AZ0x base distribution) 5.0.18 (scarthgap)
    glibc            2.39
-   firmware         3.4.2.13
+   firmware         3.10.0.49
    ...
 -- arch             PASS armv7l
 -- glibc            PASS 2.39 (bookworm needs 2.36)
@@ -109,7 +111,7 @@ Read-only. Changes nothing.
 -- panel            PASS card1-DSI-1 connected, modes: 800x1280
    node             not installed yet, deploy/install-node.sh fetches one
 
-== verdict: shape matches the tested unit (MPC One+ Gen 1, firmware 3.4.2.13)
+== verdict: shape matches the tested unit (MPC One+ Gen 1)
    README.md and INSTALL.md apply. Save your project before the first switch.
 ```
 

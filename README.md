@@ -83,16 +83,21 @@ One unit. This is the honest extent of the testing:
 | --- | --- |
 | Device | Akai Professional MPC One+ (the Gen 1 One+, board `inmusic,az05`) |
 | SoC | Rockchip RK3288, armv7l, 2 GB RAM, 2 cores |
-| MPC OS | **3.4.2.13** (build `33b99bdb8ac`) |
-| Kernel | 6.6.74-az01-2025-01-23-rt47, PREEMPT_RT |
-| Base OS | Yocto 5.0.5 (scarthgap), glibc 2.39, systemd |
+| MPC OS | **3.10.0.49** and **3.4.2.13** (build `33b99bdb8ac`) |
+| Kernel | 6.18.44-az01-2026-08-10-rt6 on 3.10, 6.6.74-az01-2025-01-23-rt47 on 3.4.2.13, both PREEMPT_RT |
+| Base OS | Yocto 5.0.18 (scarthgap) on 3.10, 5.0.5 on 3.4.2.13; glibc 2.39 and systemd on both |
 | Panel | `DSI-1`, 800x1280 portrait, rotated by weston to 1280x800 landscape |
 | Audio | card 1 `ACVA` (`hw:1,0`), behind PulseAudio |
 | Browser | Chromium 150.0.7871.100 in the chroot, weston 10.0.1, `--disable-gpu` |
 
-The MPC firmware version matters. Everything here was found and verified on 3.4.2.13. A newer
-firmware may move the rootfs partition, rename a service, or change the panel, and the install
-scripts assume what 3.4.2.13 looks like.
+The MPC firmware version matters, and two of them have now been through it. Everything here was
+found on 3.4.2.13 and re-verified on 3.10.0.49 after the October 2026 update: `/data` came through
+untouched, so the chroot, the Node runtime and the scripts were exactly as they were, and the only
+thing the update took out was the boot copy of the unit in the read-only rootfs, which
+`deploy/install-rootfs-unit.sh` puts back. The rootfs partition, `acvs.service`, the panel
+connector, the codec and the settings path were all the same on both builds. A third firmware can
+still move any of them, which is what `tools/probe-device.sh` is for: run it after an update
+instead of assuming.
 
 ## Might work on
 

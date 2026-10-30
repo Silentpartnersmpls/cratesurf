@@ -30,6 +30,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"golang.org/x/crypto/ssh"
 )
@@ -37,6 +38,7 @@ import (
 type result struct {
 	Password string
 	KeyPath  string
+	CredPath string
 }
 
 func cratesurfDir() string {
@@ -48,6 +50,53 @@ func cratesurfDir() string {
 }
 
 func knownDevicesPath() string { return filepath.Join(cratesurfDir(), "known_devices") }
+
+// credPath is where one device's generated root password is kept: a 0600 file
+// per host, beside the installer's key.
+func credPath(host string) string {
+	return filepath.Join(cratesurfDir(), "root-"+host+".txt")
+}
+
+// saveCredential writes down the password this run generated.
+//
+// It used to be printed once and stored nowhere, which made losing the key file
+// (a new laptop, a tidied home directory, a restore that skipped dotfiles) the
+// same thing as being locked out of your own MPC. A 0600 file next to the key has
+// exactly the audience the key already has, and the person who deleted the key is
+// usually still the person who owns this file.
+func saveCredential(host, pw, keyHint string) (string, error) {
+	path := credPath(host)
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+		return "", err
+	}
+	var b strings.Builder
+	fmt.Fprintf(&b, "# CrateSurf: root login for %s\n", host)
+	fmt.Fprintf(&b, "# Saved %s, mode 0600, in the same folder as the installer's key.\n",
+		time.Now().Format("2006-01-02 15:04"))
+	fmt.Fprintf(&b, "# Either this password or %s logs in as root.\n", keyHint)
+	b.WriteString("# If both are gone, KNOWN-ISSUES.md has the way back.\n")
+	fmt.Fprintf(&b, "password=%s\n", pw)
+	if err := os.WriteFile(path, []byte(b.String()), 0o600); err != nil {
+		return "", err
+	}
+	return path, nil
+}
+
+// savedPassword reads back what saveCredential wrote, so a later run from this
+// computer can log in without the person having to find the paper they wrote it
+// on.
+func savedPassword(host string) (string, string) {
+	b, err := os.ReadFile(credPath(host))
+	if err != nil {
+		return "", ""
+	}
+	for _, line := range strings.Split(string(b), "\n") {
+		if v, ok := strings.CutPrefix(strings.TrimSpace(line), "password="); ok && v != "" {
+			return v, credPath(host)
+		}
+	}
+	return "", ""
+}
 
 func readKnownDevices(path string) map[string]string {
 	m := map[string]string{}
@@ -87,6 +136,21 @@ func genPassword() (string, error) {
 		raw[i] = alphabet[int(raw[i])%len(alphabet)]
 	}
 	return string(raw), nil
+}
+
+// existingInstallerKey reads the key this installer keeps for itself, without
+// creating one: dialling a device should not leave a new file behind with no key
+// installed anywhere.
+func existingInstallerKey() ssh.Signer {
+	b, err := os.ReadFile(filepath.Join(cratesurfDir(), "id_ed25519"))
+	if err != nil {
+		return nil
+	}
+	s, err := ssh.ParsePrivateKey(b)
+	if err != nil {
+		return nil
+	}
+	return s
 }
 
 // installerKey loads the key this installer keeps for itself, creating it on
@@ -164,7 +228,9 @@ echo SET
 	// Prove it before trusting it. If a password login does not work, the old
 	// shadow goes straight back rather than leaving a device nobody can log in to.
 	addr := d.Addr
-	nd, err := dial(addr, user, pw)
+	// Password only, on purpose: with the key in the list this check would pass on
+	// a key and prove nothing about the password it is supposed to be testing.
+	nd, err := dialPassword(addr, user, pw)
 	if err != nil {
 		d.Run("cp -p /data/browser/run/shadow.bak /etc/shadow")
 		return nil, fmt.Errorf("the new password did not work, so the old shadow was put back (%v)", err)
@@ -178,6 +244,15 @@ echo SET
 	}
 	nd.Close()
 	res.Password = pw
+
+	// The password exists only in this process until it is written down here, and
+	// it has just been proven, so this can never save one that does not work.
+	keyHint := filepath.Join(cratesurfDir(), "id_ed25519")
+	if p, err := saveCredential(host, pw, keyHint); err != nil {
+		warn("could not save the password to %s: %v", credPath(host), err)
+	} else {
+		res.CredPath = p
+	}
 
 	// --- 2. the key, so the next run and the existing scripts still work -----
 	keyPath, signer, err := installerKey()
@@ -264,12 +339,20 @@ func printSecrets(res *result) {
 	headline("The MPC's new root password")
 	note("%s", paint(bold, res.Password))
 	blank()
-	note("Write it down now: it is not stored anywhere, and this screen is the")
-	note("only place it will ever appear. It is what stops anyone else on the")
-	note("network logging into the MPC as root.")
+	if res.CredPath != "" {
+		note("Saved to %s, mode 0600, and shown here once.", res.CredPath)
+	} else {
+		note("Not saved: this screen is the only place it appears.")
+	}
+	note("It is what stops anyone else on the network logging into the MPC as root.")
 	if res.KeyPath != "" {
 		blank()
 		note("This computer also has a key at %s, so you will not need the", res.KeyPath)
 		note("password again from here, and the repo's scripts keep working.")
+		blank()
+		note("If the key is ever lost, that file is the way back in. If both go, the")
+		note("MPC has to be reached by reflashing the SSH firmware image from a USB")
+		note("stick: that resets root's password but leaves everything on /data, so")
+		note("nothing installed is lost. KNOWN-ISSUES.md has the procedure.")
 	}
 }

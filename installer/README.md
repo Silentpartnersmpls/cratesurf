@@ -61,8 +61,15 @@ so this computer (and the scripts in this repo) keep working without it.
 
 - The password is the part that matters. sshd only accepts the "none" method for an account whose
   password field is empty, so a key on its own would not close anything.
+- **The password is saved, not just printed.** It goes to `~/.cratesurf/root-<host>.txt` (0600) on
+  the computer that installed, and later runs of the installer try that before asking you anything.
+  A lost key file is therefore survivable: that file is the way back in. If that file and the key
+  are both gone, the unit has to be reached by reflashing the SSH firmware image, which resets
+  root's password and leaves `/data` alone; [KNOWN-ISSUES.md](../KNOWN-ISSUES.md) has it in full.
 - The key lives at `~/.cratesurf/id_ed25519` (0600) and one `Host` entry is appended to
   `~/.ssh/config` so plain `ssh root@<mpc>` keeps working. Nothing else on your machine is touched.
+  The installer offers that key first on every later connection, which is what makes a second run
+  from the same computer work without asking for the password again.
 - The password is never written to a file and never sent anywhere. It is printed, once, on screen.
 - Before the new password is trusted, the installer logs in with it and checks it is root. If that
   fails, the old `/etc/shadow` is put back and it says so. A backup is left at

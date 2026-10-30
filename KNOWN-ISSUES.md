@@ -180,7 +180,7 @@ Examples use `root@mpc-one-mk2` as the default host. Set `MPC_HOST` and every sc
 
 Not bugs, absences. These are the things people ask for first. The ones with real work behind them
 are tracked in [ROADMAP.md](ROADMAP.md), which is where to look for the download manager, archive
-unpacking, the save-location picker and the graphical installer.
+unpacking and the graphical installer.
 
 - **No tabs and no omnibox.** One page at a time. The bar covers back/forward/reload/home, and the
   start page covers typed addresses.
@@ -205,8 +205,17 @@ unpacking, the save-location picker and the graphical installer.
   file is fetched by the browser's download manager rather than by the page, which is untested
   against sites that gate downloads on the referer.
 - **No tar or rar.** Unpacking is zip only; a `.tar.gz` pack still needs a computer in the middle.
-- **No choice about where a download lands.** Everything goes to the sample library, which is
-  usually right and not always right.
+- **A download the page starts itself lands at the top of `MPC Documents`.** Only a file *link* goes
+  through the save card, and only the card knows which folder you picked, so a download a script
+  starts - or a `blob:` link - still starts blind and lands in the root of the document tree instead
+  of in `Samples`. Nothing is lost: the top level is the first page `FILES` shows. It is the price of
+  choosing a folder per file rather than per profile.
+- **`SAVE TO` lists the top level only.** The picker offers the folders directly under `MPC
+  Documents`, so a download cannot be aimed at `Samples/Butcher Stems` directly; it lands in
+  `Samples` and you move it on the MPC if you want it deeper.
+- **The remembered folder is one folder, not one per site.** Choosing `Expansions` for an expansion
+  pack means the next sample pack also goes to `Expansions` unless you change it back. Per-site
+  memory was the other option and was not what was asked for.
 - **No graphical installer.** The install is scripts and SSH, and that is the biggest reason people
   close the tab.
 

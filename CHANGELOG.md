@@ -8,6 +8,14 @@ The project is alpha: expect the feature list below to move faster than the vers
 
 ### Added
 
+- **Choose where a download lands.** The save card's title strip now names the folder it will land in
+  and is the thing you press to change it: the picker lists the folders that are really under `MPC
+  Documents` on the unit, with the current one marked, and the choice is remembered on the device
+  (`/data/browser/run/dest`, served by new `/dest` and `/dirs` routes) rather than in the page,
+  because page storage is per site and the bar runs on every site. Changing the folder re-answers
+  "does it fit" for that folder without asking the site again. Retry and **GET AGAIN** restore to the
+  folder the file came from, **UNPACK** unpacks next to the file, and **PLAY** and the file page read
+  the path under the document root, so nothing assumes the sample library any more.
 - **The size of a file, before you commit to it.** A tap on a file link now raises a card with the
   name it will save under, its size and the free space in the sample folder, and the download starts
   only when **DOWNLOAD** is pressed - instead of the first size anyone saw being the percent of a
@@ -44,8 +52,21 @@ The project is alpha: expect the feature list below to move faster than the vers
 - **Free space in the downloads panel**, from a new `/space` route on the control server, so a large
   pack is not started on a full sample folder and left to die at the end with a file error.
 
+### Changed
+
+- **The whole `MPC Documents` tree is mounted inside the chroot at `/downloads`, and the profile's
+  download directory is that root instead of `Samples`.** Chromium has no per-download directory, so
+  a folder can only be chosen by putting it in front of the file name, and that needs the root as the
+  starting point. `browse-up.sh` replaces an older `Samples`-only bind when it finds one. The visible
+  consequence, documented rather than hidden: a download the page starts itself now lands in the root
+  of `MPC Documents` instead of in `Samples`.
+
 ### Fixed
 
+- **A file page link saved under a name with the folder glued to it.** The `/files/<file>` route
+  encodes a whole relative path into one URL segment (`Samples%2Fpack.zip`), and the name was taken
+  from the raw path, so the card read `Samples/ui-test.zip` and the saved file would have been
+  `Samples_ui-test.zip`. Decoded before the basename, in the probe and in the bar.
 - **The downloads panel no longer says "nothing downloaded yet" right after a DOWNLOAD press.**
   Chromium's download table answers empty for a moment after its worker starts and again as a
   transfer begins, so the panel now waits for the row it just started instead of accepting that

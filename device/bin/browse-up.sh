@@ -39,14 +39,27 @@ bind proc
 bind sys
 bind run/udev
 
-# Downloads must land in the MPC's own sample library, which lives on the content
-# image. Bind that one directory in explicitly at /downloads: binding /media as a
-# whole is not reliable here because /media is itself a tmpfs of mount points, and
-# a browser writing into a stale copy of it looks like a working download that
-# never reaches the library.
+# Downloads must land in the MPC's own document tree, which lives on the content
+# image. Bind that tree in explicitly at /downloads: binding /media as a whole is
+# not reliable here because /media is itself a tmpfs of mount points, and a browser
+# writing into a stale copy of it looks like a working download that never reaches
+# the MPC.
+#
+# It used to be just Samples, because that is where every download went. The whole
+# tree is mounted now because the destination is chosen per download and written as
+# a path under this root ("Samples/pack.zip"), so anything the MPC itself shows has
+# to exist in here or the browser cannot write to it.
+DOCS="/media/acvs-content/MPC Documents"
+# /proc/mounts escapes the space in that path; the plain string would never match.
+DOCS_ESC=$(printf '%s' "$DOCS" | sed 's/ /\\040/g')
 mkdir -p "$S/downloads"
-grep -qs " $S/downloads " /proc/mounts || \
-  mount --bind "/media/acvs-content/MPC Documents/Samples" "$S/downloads"
+if ! grep -qs " $S/downloads " /proc/mounts; then
+  mount --bind "$DOCS" "$S/downloads"
+elif ! grep -qs "^$DOCS_ESC $S/downloads " /proc/mounts; then
+  # An older session left Samples bound here. Replace it, or the picker would offer
+  # folders the browser still cannot see.
+  umount "$S/downloads" 2>/dev/null && mount --bind "$DOCS" "$S/downloads"
+fi
 
 systemctl stop acvs
 sleep 2

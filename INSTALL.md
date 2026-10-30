@@ -250,9 +250,10 @@ curl http://<mpc-ip>:8798/down
 ssh $MPC_HOST /data/browser/bin/browse-down.sh
 ```
 
-Downloads land in `MPC Documents/Samples`, which is the MPC's own sample library. The bar's
-download button opens the list; `FILES` in that panel browses what is already there. **REC**
-records whatever the browser is playing straight into that folder.
+Downloads land in `MPC Documents/Samples` by default - the MPC's own sample library - and **SAVE
+TO** on the save card puts one in another folder under `MPC Documents` instead, remembered for next
+time. The bar's download button opens the list; `FILES` in that panel browses the document tree.
+**REC** records whatever the browser is playing straight into the sample folder.
 
 ---
 
@@ -394,7 +395,7 @@ For anyone who wants to know exactly what this touches:
 | `/dev/mmcblk0p6` firmware rootfs | the same unit, for boot | step 3 |
 | `/data/Settings/MPC/MPC.settings` | `AutoSaveEnabled`, `AutoSaveTimeout` | step 5 |
 | `/data/Settings/MPC/MPC.settings.bak-autosave` | backup of that file | optional |
-| `/media/acvs-content/MPC Documents/Samples` | downloads and recordings you asked for | you |
+| `/media/acvs-content/MPC Documents` | downloads (in `Samples` unless you pick another folder) and recordings | you |
 
 Nothing else on the MPC is written by installing or using CrateSurf. The MPC application binary,
 its content, and the rest of the firmware are untouched.

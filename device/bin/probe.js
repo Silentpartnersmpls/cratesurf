@@ -61,8 +61,12 @@ const nameOf = (res, url) => {
   const plain = /filename\s*=\s*([^;]+)/i.exec(cd);
   if (plain) return unquote(plain[1]);
   try {
-    const last = new URL(url).pathname.split('/').filter(Boolean).pop();
-    if (last) return decoded(last);
+    // Decoded before the basename, not after: the file page encodes a whole
+    // relative path into one segment (/files/Samples%2Fpack.zip), so splitting the
+    // raw pathname hands back "Samples%2Fpack.zip" and the saved name would carry
+    // the folder with it.
+    const last = decoded(new URL(url).pathname).split('/').filter(Boolean).pop();
+    if (last) return last;
   } catch (_) {}
   return 'download';
 };

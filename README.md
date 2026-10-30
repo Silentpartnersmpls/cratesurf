@@ -183,16 +183,20 @@ collapses the bar to a tab. It lives in a shadow root so a site's CSS cannot res
 and it re-appends itself if an ad covers it. **MPC** is the guaranteed way out: one tap ends the
 session and hands the panel back, whatever the page is doing.
 
-**Downloads** land in `MPC Documents/Samples`, which is the MPC's own sample folder. Kiosk mode
-paints no download bubble, so the bar's panel is the only download UI there is, and it carries the
-whole job: what is running with percent and **CANCEL**, what stopped with the reason in plain words
-and **RETRY** / **DROP**, what finished with its size and **PLAY** if it is audio, and **GET AGAIN**
-when the file has since left the folder. **DROP** forgets the row, never the file. Free space in the
-sample folder is printed next to the title, and `FILES` opens the folder itself.
+**Downloads** land in `MPC Documents/Samples` by default, which is the MPC's own sample folder, and
+**SAVE TO** on the save card sends one to any other folder under `MPC Documents` instead -
+`Expansions`, `Tracks`, whatever is really on the unit rather than a hardcoded few. The choice is
+remembered on the device, so the next file lands there too until you change it. Kiosk mode paints no
+download bubble, so the bar's panel is the only download UI there is, and it carries the whole job:
+what is running with percent and **CANCEL**, what stopped with the reason in plain words and
+**RETRY** / **DROP**, what finished with its size and **PLAY** if it is audio, and **GET AGAIN** when
+the file has since left the folder. **DROP** forgets the row, never the file. Free space in the
+folder currently chosen is printed next to the title, and `FILES` opens the document tree itself.
 
 **The size before you commit.** Tapping a file link - an archive, a sample pack, anything the
 browser would save rather than show - puts a card in the corner *before* anything moves: the name it
-will save under, how big it is, and how much room the sample folder has left. A pack that cannot fit
+will save under, where it is going, how big it is, and how much room that folder has left. A pack
+that cannot fit
 says so in red and the button reads **WON'T FIT** rather than starting a transfer that dies at the
 end. The size is one `HEAD` request made by the device, so it costs seconds, not the download; the
 button stays shut while it is being asked, and a site that will not answer gets **size unknown** and
@@ -244,6 +248,11 @@ On the unit, by a person, not simulated:
 - **Downloads**, from real sites, landing in `MPC Documents/Samples` and being there afterwards,
   including a 300 MB file with live progress in the panel. What lands is a complete, playable file,
   not a zero-byte stub.
+- **Choosing where a file lands**, on the glass: the card opened on the folder remembered from the
+  last time, the picker listed the fourteen folders that are really on the unit with the current one
+  marked, a pack sent to `Tracks` arrived in `Tracks` and not in `Samples`, **UNPACK** put the pack
+  next to it in `Tracks`, **GET AGAIN** after deleting the file restored it to `Tracks` rather than
+  to the default, and the whole choice survived a browser restart.
 - **Unpacking**, from the panel: a 28 MB pack of 101 files unpacked into the sample folder and then
   compared file by file against the tree it was zipped from, 101 of 101 identical by sha256, empty
   folder included, nothing left in a scratch folder. A zip whose names escape the destination was

@@ -182,11 +182,31 @@
         box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.10), 0 12px 34px rgba(0, 0, 0, 0.65);
       }
       .confirm .chead {
-        padding: 7px 11px; background: linear-gradient(#39414f, #2a303c);
+        display: flex; align-items: center; gap: 6px;
+        padding: 6px 9px 6px 11px; background: linear-gradient(#39414f, #2a303c);
         border-bottom: 1px solid #12161e; color: #dfe6f2;
         font: 700 11px "DejaVu Sans", sans-serif; letter-spacing: 1.8px;
         box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.10);
       }
+      /* Where it lands is part of the question the card asks, so the folder sits in
+         the title strip and is the thing you press to change it. */
+      .confirm .chead .cdest {
+        width: auto; height: 26px; padding: 0 9px; margin-left: auto;
+        color: #a9f2e8; border-color: #0a6f64;
+        background: linear-gradient(#0f8d7f, #0a6b61);
+        font: 700 10.5px/1 "DejaVu Sans", sans-serif; letter-spacing: 1.2px;
+      }
+      .confirm .chead .cdest:active { background: #085c53; }
+      /* The folder list, open under the strip. A tap picks one and closes it. */
+      .confirm .cpick { display: flex; flex-wrap: wrap; gap: 6px; }
+      .confirm .cpick button {
+        width: auto; height: 30px; padding: 0 10px;
+        font: 700 10.5px/1 "DejaVu Sans", sans-serif; letter-spacing: 1px;
+      }
+      .confirm .cpick button.on {
+        color: #d8fffa; border-color: #0a6f64; background: linear-gradient(#0f8d7f, #0a6b61);
+      }
+      .confirm .cpick .empty { padding: 4px 0; text-align: left; }
       .confirm .cbody { padding: 10px 11px 11px; display: flex; flex-direction: column; gap: 6px; }
       .confirm .cname {
         color: #d6dfee; font-size: 13px;
@@ -221,8 +241,9 @@
         <div class="plist"><div class="empty">nothing yet</div></div>
       </div>
       <div class="confirm" hidden>
-        <div class="chead">SAVE TO SAMPLES</div>
+        <div class="chead"><span>SAVE TO</span><button class="cdest"></button></div>
         <div class="cbody">
+          <div class="cpick" hidden></div>
           <div class="cname"></div>
           <div class="cmeta"></div>
           <div class="cfree"></div>
@@ -261,6 +282,13 @@
   const badge = $('.badge');
   const plist = $('.plist');
   const freeEl = $('.phead .free');
+
+  // Where the next download goes. The answer lives on the device (the control
+  // server's run folder) because page storage is per origin and the bar runs on
+  // every site; this is only the current value.
+  const DEFAULT_DEST = 'Samples';
+  let dest = DEFAULT_DEST;
+  let allDirs = [];
 
   // Unpack jobs by file name. The list is redrawn from Chromium's download table
   // every two seconds, so anything a row needs to say beyond that has to live
@@ -310,9 +338,17 @@
   const PLAYABLE = /\.(wav|mp3|ogg|flac|m4a|aif|aiff|mid)$/i;
   const UNPACKABLE = /\.zip$/i;
 
+  // rel is the file's name under the document root, folder included. PLAY and
+  // UNPACK need it: with a destination to choose from, a file is no longer
+  // necessarily in the one folder the bar used to assume.
+  // The same file as a path in the file page. Every segment is escaped: the folders
+  // here have spaces in their names ("Plugin Presets" is one of them).
+  const relPath = (btn) => String(btn.dataset.rel || btn.dataset.name || '')
+    .split('/').map((s) => encodeURIComponent(s)).join('/');
+
   const dlBtn = (act, d, text, go) =>
     '<button data-act="' + act + '" data-id="' + d.id + '" data-name="' + esc(d.name) + '"' +
-    (go ? ' class="go"' : '') + '>' + text + '</button>';
+    ' data-rel="' + esc(d.rel || d.name) + '"' + (go ? ' class="go"' : '') + '>' + text + '</button>';
 
   // Three states, three different things a person can do. Before this, every row
   // looked the same and the only one with a control on it was the browser's own
@@ -339,7 +375,7 @@
         } else if (PLAYABLE.test(d.name)) {
           acts = dlBtn('dlopen', d, 'PLAY', true) + dlBtn('dlerase', d, 'DROP');
         } else if (UNPACKABLE.test(d.name)) {
-          const job = unpacked.get(d.name);
+          const job = unpacked.get(d.rel || d.name);
           if (job && job.state === 'running') {
             const up = job.bytes ? Math.min(100, Math.round((job.written / job.bytes) * 100)) : 0;
             label = 'unpacking ' + job.done + ' of ' + job.count + ' files · ' + up + '%';
@@ -390,9 +426,9 @@
   // How much room is left where these land. A sample pack can be 300 MB and the
   // failure without this number is a download that dies at 99% with a file error.
   const refreshSpace = async () => {
-    const j = await ask({ kind: 'space' });
+    const j = await ask({ kind: 'space', dir: dest });
     freeEl.textContent = j && j.ok ? fmtBytes(j.free) + ' free' : '';
-    freeEl.title = j && j.ok ? 'free space in the samples folder' : '';
+    freeEl.title = j && j.ok ? 'free space in ' + dest : '';
   };
 
   // Cancel, retry and drop all answer through the worker, then the list is redrawn
@@ -405,7 +441,7 @@
   const startUnpack = async (name) => {
     unpacked.set(name, { state: 'running', dest: '', count: 0, done: 0, written: 0, bytes: 0 });
     renderList(lastItems);
-    const j = await ask({ kind: 'unpack', name });
+    const j = await ask({ kind: 'unpack', rel: name });
     if (j && j.state) unpacked.set(name, j);
     if (j && j.state === 'failed') say('unpack failed: ' + j.error);
     renderList(lastItems);
@@ -417,7 +453,7 @@
     clearTimeout(unpackTimer);
     const running = [...unpacked.keys()].filter((n) => unpacked.get(n).state === 'running');
     for (const name of running) {
-      const j = await ask({ kind: 'unpack-status', name });
+      const j = await ask({ kind: 'unpack-status', rel: name });
       if (!j || !j.state || j.state === 'none') continue;
       unpacked.set(name, j);
       if (j.state === 'failed') say('unpack failed: ' + j.error);
@@ -452,10 +488,26 @@
   const cMeta = $('.confirm .cmeta');
   const cFree = $('.confirm .cfree');
   const cGet = $('.confirm .cget');
+  const cDest = $('.confirm .cdest');
+  const cPick = $('.confirm .cpick');
   let pendingSave = null;
+
+  const paintDest = () => {
+    cDest.textContent = dest.toUpperCase() + ' \u25BE';
+    cDest.title = 'save to ' + dest;
+  };
+
+  // Asked once per page load. A bar showing SAMPLES while the device had another
+  // folder remembered would be quietly promising somewhere the file will not be.
+  const loadDest = async () => {
+    const j = await ask({ kind: 'dest' });
+    if (j && j.ok && j.dir) dest = j.dir;
+    paintDest();
+  };
 
   const closeConfirm = () => {
     confirmEl.hidden = true;
+    cPick.hidden = true;
     pendingSave = null;
   };
 
@@ -469,57 +521,104 @@
     cGet.disabled = !enabled;
   };
 
-  const openConfirm = async (url, name) => {
-    pendingSave = { url };
-    cName.textContent = name;
-    cMeta.textContent = 'checking size…';
-    cMeta.classList.remove('err');
-    cFree.textContent = '';
-    setGet('CHECKING…', false);
-    confirmEl.hidden = false;
-    const [j, sp] = await Promise.all([ask({ kind: 'probe', url }), ask({ kind: 'space' })]);
-    // The answer can arrive after the card has been dismissed or replaced by a
-    // link tapped behind it, and writing it now would put the wrong file on screen.
-    if (!pendingSave || pendingSave.url !== url) return;
-    const free = sp && sp.ok ? sp.free : 0;
-    if (free) cFree.textContent = fmtBytes(free) + ' free in the samples folder';
-    if (j && j.ok && j.name) cName.textContent = j.name;
-    if (!j || !j.ok) {
-      cMeta.textContent = (j && j.error) || 'size unknown';
-      setGet('DOWNLOAD', true);
-      return;
-    }
-    if (!j.size) {
-      cMeta.textContent = 'size unknown';
-      setGet('DOWNLOAD', true);
-      return;
-    }
+  // What the card says about size and room. Kept apart from the request that fills
+  // it in, because the folder can change after the answer has landed: another
+  // folder means another free number, and "does it fit" has to follow it without
+  // asking the site a second time.
+  const fit = () => {
+    if (!pendingSave || !pendingSave.answered) return;
+    const { size, free, note } = pendingSave;
+    cFree.textContent = free ? fmtBytes(free) + ' free in ' + dest : '';
+    cMeta.classList.toggle('err', Boolean(free && size && size > free));
+    if (note) { cMeta.textContent = note; setGet('DOWNLOAD', true); return; }
+    if (!size) { cMeta.textContent = 'size unknown'; setGet('DOWNLOAD', true); return; }
     // Saying the shortfall here is the whole point: the alternative is a download
     // that dies at 99% with a file error that never mentions disk space.
-    if (free && j.size > free) {
-      cMeta.textContent = 'needs ' + fmtBytes(j.size) + ', more than the folder has left';
-      cMeta.classList.add('err');
+    if (free && size > free) {
+      cMeta.textContent = 'needs ' + fmtBytes(size) + ', more than ' + dest + ' has left';
       // Not a warning over a live button: starting this one can only end in a
       // transfer that dies at the end, so the offer comes off the card, and the
       // button says which answer it is instead of going quietly dim.
       setGet("WON'T FIT", false);
       return;
     }
-    cMeta.textContent = fmtBytes(j.size);
+    cMeta.textContent = fmtBytes(size);
     setGet('DOWNLOAD', true);
+  };
+
+  const openConfirm = async (url, name) => {
+    pendingSave = { url, name, size: 0, free: 0, answered: false, note: '' };
+    cName.textContent = name;
+    cMeta.textContent = 'checking size…';
+    cMeta.classList.remove('err');
+    cFree.textContent = '';
+    cPick.hidden = true;
+    paintDest();
+    setGet('CHECKING…', false);
+    confirmEl.hidden = false;
+    const [j, sp] = await Promise.all([
+      ask({ kind: 'probe', url }),
+      ask({ kind: 'space', dir: dest })
+    ]);
+    // The answer can arrive after the card has been dismissed or replaced by a
+    // link tapped behind it, and writing it now would put the wrong file on screen.
+    if (!pendingSave || pendingSave.url !== url) return;
+    pendingSave.free = sp && sp.ok ? sp.free : 0;
+    if (j && j.ok && j.name) {
+      pendingSave.name = j.name;
+      cName.textContent = j.name;
+    }
+    if (j && j.ok) pendingSave.size = j.size || 0;
+    else pendingSave.note = (j && j.error) || 'size unknown';
+    pendingSave.answered = true;
+    fit();
+  };
+
+  // The list is what is really on the device, so a folder added or renamed on the
+  // MPC shows up here without a code change, and a folder that is gone cannot be
+  // picked.
+  const togglePicker = async () => {
+    if (!cPick.hidden) { cPick.hidden = true; return; }
+    cPick.hidden = false;
+    if (!allDirs.length) {
+      cPick.innerHTML = '<div class="empty">reading the folders…</div>';
+      const j = await ask({ kind: 'dirs' });
+      allDirs = j && j.ok && Array.isArray(j.dirs) ? j.dirs : [];
+    }
+    if (!allDirs.length) {
+      cPick.innerHTML = '<div class="empty">no folders to choose</div>';
+      return;
+    }
+    cPick.innerHTML = allDirs.map((d) =>
+      '<button data-act="cdest-set" data-dir="' + esc(d) + '"' +
+      (d === dest ? ' class="on"' : '') + '>' + esc(d.toUpperCase()) + '</button>').join('');
+  };
+
+  // A change of destination, not of file: nothing is downloaded here. The choice is
+  // remembered on the device, and the card re-answers "does it fit" for the folder
+  // it now names.
+  const chooseDest = async (name) => {
+    if (!name) return;
+    dest = name;
+    paintDest();
+    cPick.hidden = true;
+    const r = await ask({ kind: 'dest-set', dir: name });
+    if (r && r.ok === false) say(r.error || 'could not remember that folder');
+    refreshSpace();
+    fit();
   };
 
   const startSave = async () => {
     if (!pendingSave) return;
     const url = pendingSave.url;
-    const name = cName.textContent;
-    const r = await ask({ kind: 'dl-start', url });
+    const name = pendingSave.name || cName.textContent;
+    const r = await ask({ kind: 'dl-start', url, dir: dest, name });
     closeConfirm();
     if (r && r.ok === false) {
       say(r.error || 'the download did not start');
       return;
     }
-    say('saving ' + name);
+    say('saving ' + name + ' to ' + dest);
     openPanel();
     // Chromium's download table answers empty for a moment after the worker starts
     // and for a moment after a transfer begins, and a panel reading "nothing
@@ -553,7 +652,10 @@
     e.preventDefault();
     e.stopImmediatePropagation();
     let guessed = 'download';
-    try { guessed = decodeURIComponent(p.split('/').filter(Boolean).pop() || 'download'); } catch (_) {}
+    // Decoded first. The file page puts a whole relative path in one segment
+    // (/files/Samples%2Fpack.zip), and splitting before decoding leaves the folder
+    // glued to the name, which then becomes the saved file name.
+    try { guessed = decodeURIComponent(p).split('/').filter(Boolean).pop() || 'download'; } catch (_) {}
     openConfirm(a.href, guessed);
   }, true);
 
@@ -699,9 +801,11 @@
     else if (act === 'dlcancel') dlAction('dl-cancel', btn);
     else if (act === 'dlretry') dlAction('dl-retry', btn);
     else if (act === 'dlerase') dlAction('dl-erase', btn);
-    else if (act === 'dlopen') location.assign(FILES + '/' + encodeURIComponent(btn.dataset.name));
-    else if (act === 'unpack') startUnpack(btn.dataset.name);
+    else if (act === 'dlopen') location.assign(FILES + '/' + relPath(btn));
+    else if (act === 'unpack') startUnpack(btn.dataset.rel || btn.dataset.name);
+    else if (act === 'cdest-set') chooseDest(btn.dataset.dir);
     else if (btn.classList.contains('cget')) startSave();
+    else if (btn.classList.contains('cdest')) togglePicker();
     else if (btn.classList.contains('cx')) closeConfirm();
     else if (act === 'hide') setCollapsed(true);
     else if (btn.classList.contains('tab')) setCollapsed(false);
@@ -720,6 +824,7 @@
 
   setCollapsed(collapsed());
   document.documentElement.appendChild(host);
+  loadDest();
   poll();
   setInterval(poll, 2000);
   setInterval(raise, 800);

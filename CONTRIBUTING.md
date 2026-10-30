@@ -246,8 +246,11 @@ like a different bug.
 **Mounts and paths**
 
 - **Do not bind `/media` wholesale.** It is a tmpfs of mount points here, so a browser writing into
-  a stale copy looks like a working download that never reaches the library. `browse-up.sh` binds
-  `MPC Documents/Samples` at `/downloads`.
+  a stale copy looks like a working download that never reaches the library. `browse-up.sh` binds the
+  whole `MPC Documents` tree at `/downloads`, and a download's folder is the path in front of its
+  name (`Samples/pack.zip`), so any folder the MPC shows can be a destination without another mount.
+  Chromium has no per-download directory - the extension only chooses a relative path - which is why
+  the default directory is the root and not `Samples`.
 - **A `mode` file is a claim, not a fact.** After weston dies the file still says `browse`, so
   `browse-up.sh` checks the weston pid and rebuilds rather than answering "already in browse mode"
   to a black screen.

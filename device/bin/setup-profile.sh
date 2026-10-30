@@ -3,8 +3,11 @@
 #
 # Downloads must land somewhere the MPC's own browser can see, and Chromium must
 # not stop to ask where to put them (there is no dialog to answer in kiosk mode).
-# The library folder is bind-mounted at /downloads inside the chroot (see browse-up.sh),
-# so the browser writes to a path that is the real "MPC Documents/Samples" folder.
+# The whole "MPC Documents" tree is bind-mounted at /downloads inside the chroot
+# (see browse-up.sh), so the directory here is that root, and the folder a file
+# lands in is the path in front of its name: "Samples/pack.zip". Chromium cannot be
+# pointed at a folder per download - the extension only chooses a relative path -
+# which is why the root, and not Samples itself, is the default.
 S=/data/browser/sysroot
 PROF=$S/root/chrome-profile
 DL="/downloads"

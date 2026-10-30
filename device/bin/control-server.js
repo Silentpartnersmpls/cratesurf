@@ -36,7 +36,13 @@ const MODE = `${R}/run/mode`;
 const UP = `${R}/bin/browse-up.sh`;
 const DOWN = `${R}/bin/browse-down.sh`;
 const HOME_PAGE = `${R}/sysroot/opt/home.html`;
+// Where the recorder writes takes. Still the sample folder, because that is the one
+// folder the MPC's own browser lists as a library.
 const FILES_ROOT = process.env.MPC_FILES_ROOT || '/media/acvs-content/MPC Documents/Samples';
+// Everything a download may be saved into or listed from, as one root: the MPC's
+// whole document tree, bind-mounted at /downloads inside the chroot. A file's
+// folder is the path in front of its name ("Samples/pack.zip"), so one guarded
+// boundary covers the picker, the file page and the unpacker at once.
 
 const run = (script) => new Promise((resolve) => {
   execFile('/bin/sh', [script], { detached: true, timeout: 120000 }, (err, out, errout) => {
@@ -86,10 +92,36 @@ const TYPES = {
   '.jpeg': 'image/jpeg', '.gif': 'image/gif', '.svg': 'image/svg+xml'
 };
 
-// Everything under FILES_ROOT only. path.resolve plus a prefix check is what
-// stops ../../ from walking out of the sample folder.
+const DOCS_ROOT = process.env.MPC_DOCS_ROOT || '/media/acvs-content/MPC Documents';
+
+// Where downloads go, remembered on the device rather than in the page. The bar
+// runs on whatever site is open and page storage is per origin, so a choice made on
+// one site would be forgotten on the next. A file next to the mode flag survives a
+// changed site, a closed browser and a power cycle, which is what "remembered"
+// has to mean here.
+const DEST_FILE = `${R}/run/dest`;
+const DEFAULT_DEST = 'Samples';
+
+// Only a real folder directly under the documents root, so a stale file or a bad
+// request cannot point downloads outside the tree the MPC can see.
+const validDest = (d) => {
+  const name = String(d || '').trim().replace(/\/+$/, '');
+  if (!name || name.indexOf('/') !== -1 || name === '.' || name === '..') return null;
+  try {
+    return fs.statSync(path.join(DOCS_ROOT, name)).isDirectory() ? name : null;
+  } catch (_) { return null; }
+};
+
+const savedDest = () => {
+  try {
+    return validDest(fs.readFileSync(DEST_FILE, 'utf8')) || DEFAULT_DEST;
+  } catch (_) { return DEFAULT_DEST; }
+};
+
+// Everything under DOCS_ROOT only. path.resolve plus a prefix check is what stops
+// ../../ from walking out of the document tree.
 function resolveInRoot(rel) {
-  const base = path.resolve(FILES_ROOT);
+  const base = path.resolve(DOCS_ROOT);
   const target = path.resolve(base, rel || '.');
   if (target !== base && !target.startsWith(base + path.sep)) return null;
   return target;
@@ -148,7 +180,9 @@ const startUnpack = (rel) => {
   // Saying so now is the difference between a message and a folder half full of
   // files when the disk runs out at 90%.
   try {
-    const st = fs.statfsSync(FILES_ROOT);
+    // The zip's own folder is where the unpacked copy goes, so that is the disk
+    // whose room matters.
+    const st = fs.statfsSync(path.dirname(target));
     const free = st.bavail * st.bsize;
     if (info.bytes > free) {
       const failed = {
@@ -227,7 +261,7 @@ const FILES_CSS = `
 
 function filesPage(rel, items) {
   const parts = (rel || '').split('/').filter(Boolean);
-  const crumbs = [`<a href="/files">SAMPLES</a>`];
+  const crumbs = [`<a href="/files">DOCUMENTS</a>`];
   parts.forEach((p, i) => {
     const sub = parts.slice(0, i + 1).join('/');
     crumbs.push(`<a href="/files?d=${encodeURIComponent(sub)}">${esc(p)}</a>`);
@@ -249,10 +283,10 @@ function filesPage(rel, items) {
     }).join('') + '</ul>';
   }
   return `<!doctype html><html><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1"><title>CrateSurf - Samples</title>
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>CrateSurf - MPC Documents</title>
 <style>${FILES_CSS}</style></head><body>
 <header>${MARK_SVG}<span class="name">CRATESURF</span><span class="by">BY SPS</span>
-<span class="path">/samples/${esc(rel || '')}</span>
+<span class="path">/MPC Documents/${esc(rel || '')}</span>
 <a href="/home">START</a></header>${body}</body></html>`;
 }
 
@@ -365,9 +399,45 @@ http.createServer(async (req, res) => {
   // with a file error that says nothing about disk space. Read-only and not
   // sensitive, so it answers on the LAN like /status does.
   if (p === '/space') {
+    const dir = resolveInRoot(u.searchParams.get('d') || savedDest());
+    if (!dir) { res.writeHead(403); res.end(); return; }
     try {
-      const st = fs.statfsSync(FILES_ROOT);
+      const st = fs.statfsSync(dir);
       sendJson(res, { ok: true, free: st.bavail * st.bsize, total: st.blocks * st.bsize });
+    } catch (e) {
+      sendJson(res, { ok: false, error: e.message });
+    }
+    return;
+  }
+
+  // The folders a download can be sent to: the top level of the document tree as
+  // the MPC itself shows it, so the list stays right when a folder is added or
+  // renamed on the device instead of being a hardcoded few that drift. Hidden
+  // folders and lost+found are left out - they are not somewhere to save a sample.
+  if (p === '/dirs') {
+    if (!localOnly(req)) { res.writeHead(403); res.end(); return; }
+    try {
+      const dirs = fs.readdirSync(DOCS_ROOT, { withFileTypes: true })
+        .filter((e) => e.isDirectory() && !e.name.startsWith('.'))
+        .map((e) => e.name)
+        .sort((a, b) => a.localeCompare(b));
+      sendJson(res, { ok: true, dirs });
+    } catch (e) {
+      sendJson(res, { ok: false, error: e.message });
+    }
+    return;
+  }
+
+  // The remembered destination, and the way to change it.
+  if (p === '/dest') {
+    if (!localOnly(req)) { res.writeHead(403); res.end(); return; }
+    if (req.method !== 'POST') { sendJson(res, { ok: true, dir: savedDest() }); return; }
+    const name = validDest(u.searchParams.get('d'));
+    if (!name) { sendJson(res, { ok: false, error: 'no such folder' }); return; }
+    try {
+      fs.writeFileSync(DEST_FILE, name + '\n');
+      console.log(`download destination -> ${name}`);
+      sendJson(res, { ok: true, dir: name });
     } catch (e) {
       sendJson(res, { ok: false, error: e.message });
     }

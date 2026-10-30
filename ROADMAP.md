@@ -29,10 +29,14 @@ everything around them.
   password, an unsupported method, a multi-disk archive or a name that escapes the destination, and
   extracts into a scratch folder so a half-written pack never appears under the real name.
   Still open: the tar flavours, and offering to delete the `.zip` once it is unpacked.
-- **Choose where a download goes.** Today every download goes to the sample library because that is
-  the only place the MPC will look. That is right most of the time and wrong the rest of the time,
-  so it needs a picker: the library by default, or a folder of your choosing, remembered per site if
-  that turns out to be what people want.
+- **Choose where a download goes. Done.** The save card carries **SAVE TO** in its title strip, the
+  picker offers the folders that are really on the unit with the current one marked, and the choice
+  is remembered on the device so the next file lands there too. It is one folder for everything, not
+  one per site, and it lists the top level of `MPC Documents` only; both are in
+  [KNOWN-ISSUES.md](KNOWN-ISSUES.md#missing-features). What it cost underneath: the whole document
+  tree is bind-mounted at `/downloads` instead of just `Samples`, the profile's download directory is
+  that root, and every download carries its folder as the front of its name, because Chromium has no
+  per-download directory to offer.
 
 ## Making it installable by people who are not us
 

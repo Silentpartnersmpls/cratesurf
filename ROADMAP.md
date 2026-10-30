@@ -28,7 +28,10 @@ everything around them.
   it counts files while it runs, checks the CRC of every entry, checks free space first, refuses a
   password, an unsupported method, a multi-disk archive or a name that escapes the destination, and
   extracts into a scratch folder so a half-written pack never appears under the real name.
-  Still open: the tar flavours, and offering to delete the `.zip` once it is unpacked.
+  **Deleting the `.zip` after a good unpack is in too:** the row offers **DELETE ZIP** once an unpack
+  has finished, and the route behind it only accepts a zip this server actually unpacked, so it
+  cannot be talked into removing anything else. The row goes with the file. Still open: the tar
+  flavours.
 - **Choose where a download goes. Done.** The save card carries **SAVE TO** in its title strip, the
   picker offers the folders that are really on the unit with the current one marked, and the choice
   is remembered on the device so the next file lands there too. It is one folder for everything, not

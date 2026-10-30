@@ -283,6 +283,17 @@ chrome.runtime.onMessage.addListener((msg, _sender, respond) => {
     return true;
   }
 
+  // Delete a pack that has already been unpacked. The server decides whether it may:
+  // only a zip it finished unpacking is deletable, so a mistake here cannot remove
+  // anything but the archive the unpacked folder came from.
+  if (msg.kind === 'rm') {
+    fetch(`${API}/rm?f=${encodeURIComponent(msg.rel || '')}`, { method: 'POST', cache: 'no-store' })
+      .then((r) => r.json())
+      .then((j) => respond(j))
+      .catch((e) => respond({ ok: false, error: 'could not reach the device: ' + e.message }));
+    return true;
+  }
+
   if (msg.kind === 'rec') {
     recCall(msg.action)
       .then((j) => respond(j))

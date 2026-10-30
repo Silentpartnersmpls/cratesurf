@@ -297,6 +297,28 @@
   let lastItems = [];
   let unpackTimer = null;
 
+  // Unpack jobs outlive the page, so a zip row asks the server once (per page) what
+  // became of it. Without this, navigating away during an unpack came back to a row
+  // that had forgotten the pack was already out, and the offer to delete the
+  // archive would have vanished with the page.
+  const askedJobs = new Set();
+  const catchUpJobs = async (items) => {
+    for (const d of items) {
+      const rel = d.rel || d.name;
+      if (d.state !== 'complete' || !UNPACKABLE.test(d.name)) continue;
+      if (unpacked.has(rel) || askedJobs.has(rel)) continue;
+      askedJobs.add(rel);
+      const j = await ask({ kind: 'unpack-status', rel });
+      if (!j || !j.state || j.state === 'none') continue;
+      unpacked.set(rel, j);
+      if (j.state === 'running') {
+        clearTimeout(unpackTimer);
+        unpackTimer = setTimeout(unpackLoop, 1200);
+      }
+      if (panel.dataset.open === '1') renderList(lastItems);
+    }
+  };
+
   // A page opened cold has nothing to go back to, so back falls through to the
   // start page instead of doing nothing, and neither arrow is ever disabled.
   const goBack = () => {
@@ -382,8 +404,14 @@
             acts = '<button disabled>UNPACKING</button>';
             barHtml = '<div class="bar2"><div class="fill" style="width:' + up + '%"></div></div>';
           } else {
-            acts = dlBtn('unpack', d, 'UNPACK', true) + dlBtn('dlerase', d, 'DROP');
-            if (job && job.state === 'done') label += ' · unpacked into ' + esc(job.dest);
+            // Once the pack is out, the archive is dead weight - a 300 MB zip onto a
+            // 16 GB card is the second copy nobody needs. The offer only appears after
+            // a good unpack, because deleting a zip that was never unpacked would be
+            // deleting the only copy.
+            const done = Boolean(job && job.state === 'done');
+            acts = (done ? dlBtn('dlrm', d, 'DELETE ZIP') : dlBtn('unpack', d, 'UNPACK', true)) +
+              dlBtn('dlerase', d, 'DROP');
+            if (done) label += ' · unpacked into ' + esc(job.dest);
             if (job && job.state === 'failed') {
               label += ' · <span class="err">' + esc(job.error) + '</span>';
             }
@@ -463,6 +491,25 @@
     if ([...unpacked.values()].some((j) => j.state === 'running')) {
       unpackTimer = setTimeout(unpackLoop, 1200);
     }
+  };
+
+  // Remove the archive an unpack came from. The row goes with it: the file was the
+  // only thing it offered, and a row for a file that is gone on purpose would just
+  // read "gone from the folder" and offer to fetch back what you chose to delete.
+  const deletePack = async (btn) => {
+    const rel = btn.dataset.rel || btn.dataset.name;
+    const id = Number(btn.dataset.id);
+    btn.disabled = true;
+    const r = await ask({ kind: 'rm', rel });
+    if (r && r.ok === false) {
+      btn.disabled = false;
+      say(r.error || 'could not delete it');
+      return;
+    }
+    unpacked.delete(rel);
+    await ask({ kind: 'dl-erase', id });
+    say('deleted ' + (rel.split('/').pop() || rel));
+    renderList(await askDownloads());
   };
 
   const dlAction = async (kind, btn) => {
@@ -740,6 +787,7 @@
   const poll = async () => {
     const items = await askDownloads();
     lastItems = items;
+    catchUpJobs(items);
     const active = items.filter((d) => d.state === 'in_progress').length;
     if (active > 0) {
       badge.hidden = false;
@@ -762,7 +810,7 @@
     // leaving "nothing yet" on screen right after a download was started, is the
     // difference between a slow panel and a panel that looks broken.
     if (!lastItems.length) plist.innerHTML = '<div class="empty">reading the list…</div>';
-    askDownloads().then(renderList);
+    askDownloads().then((items) => { catchUpJobs(items); renderList(items); });
     refreshSpace();
   };
   const closePanel = () => {
@@ -803,6 +851,7 @@
     else if (act === 'dlerase') dlAction('dl-erase', btn);
     else if (act === 'dlopen') location.assign(FILES + '/' + relPath(btn));
     else if (act === 'unpack') startUnpack(btn.dataset.rel || btn.dataset.name);
+    else if (act === 'dlrm') deletePack(btn);
     else if (act === 'cdest-set') chooseDest(btn.dataset.dir);
     else if (btn.classList.contains('cget')) startSave();
     else if (btn.classList.contains('cdest')) togglePicker();

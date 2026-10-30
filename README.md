@@ -208,7 +208,10 @@ not `Samples/Pack/Pack/...` - so the MPC sees the whole pack without a computer 
 refuses what it cannot do honestly rather than half-doing it: a password, a compression method zlib
 lacks, an archive whose member names try to write outside the folder, a pack bigger than the free
 space. Unpacking reads the zip in the browser's own runtime, so there is no `unzip` to install and
-no firmware detail to depend on.
+no firmware detail to depend on. Once the pack is out, the row offers **DELETE ZIP** for the archive
+itself - a 300 MB zip is the second copy nobody needs on a 16 GB card - and only after an unpack
+that finished, because removing a zip that was never opened would be removing the only copy. The
+unpacked folder is never touched.
 
 **REC** records whatever the browser is playing, straight into the sample folder as
 `Web Grab NNN.wav`, at 44.1 kHz 16-bit stereo. Press it, play the thing, press it again. A take

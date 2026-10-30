@@ -8,6 +8,13 @@ The project is alpha: expect the feature list below to move faster than the vers
 
 ### Added
 
+- **Delete the `.zip` once it has unpacked.** A pack is 30-300 MB and the unpacked folder is what you
+  wanted, so keeping both doubles the cost of every download on a 16 GB card. The row offers **DELETE
+  ZIP** after an unpack that finished, and behind it a new loopback `/rm` route that only accepts a
+  zip this server actually unpacked (`jobs` is the guard, not the caller), so it cannot be talked
+  into removing anything else; the row is erased with it, because a row for a file you chose to
+  delete would just offer to fetch it back. The offer is re-read from the server on every page load,
+  since an unpack outlives the page it was started from.
 - **Choose where a download lands.** The save card's title strip now names the folder it will land in
   and is the thing you press to change it: the picker lists the folders that are really under `MPC
   Documents` on the unit, with the current one marked, and the choice is remembered on the device

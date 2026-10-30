@@ -456,6 +456,39 @@ http.createServer(async (req, res) => {
     return;
   }
 
+  // Delete the pack that has just been unpacked. Guarded by the job itself, not by
+  // the caller: only a zip this server finished unpacking can be removed, so the
+  // route cannot be talked into deleting something else. A pack is 30-300 MB and
+  // the unpacked folder is what you wanted, so leaving both doubles the cost of
+  // every download on a 16 GB card.
+  if (p === '/rm') {
+    if (!localOnly(req)) { res.writeHead(403); res.end(); return; }
+    const rel = u.searchParams.get('f') || '';
+    const job = jobs.get(rel);
+    if (!job || job.state !== 'done') {
+      sendJson(res, { ok: false, error: 'that pack has not been unpacked yet' });
+      return;
+    }
+    const target = resolveInRoot(rel);
+    if (!target) { res.writeHead(403); res.end(); return; }
+    fs.unlink(target, (err) => {
+      if (err) {
+        // Gone already is the answer the caller wanted, so it is not a failure worth
+        // a red line on the row.
+        const gone = err.code === 'ENOENT';
+        if (!gone) console.log(`rm ${rel} -> ${err.message}`);
+        sendJson(res, gone ? { ok: true } : { ok: false, error: 'could not delete it: ' + err.code });
+        return;
+      }
+      // The job is spent: there is no zip left to unpack again, and keeping the
+      // entry would keep a DELETE offer for a file that is gone.
+      jobs.delete(rel);
+      console.log(`rm ${rel} -> deleted after unpacking into ${job.dest}`);
+      sendJson(res, { ok: true });
+    });
+    return;
+  }
+
   // Unpacking writes into the sample library, so it is loopback-only like the
   // file routes: the bar asks from inside the chroot, nothing else may ask.
   if (p === '/unpack' || p === '/unpack/status') {

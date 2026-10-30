@@ -1,17 +1,17 @@
 # CrateSurf by SPS
 
-**A real web browser on your MPC.** Chromium on the MPC One+'s own touchscreen, with sound,
+**A real web browser on your MPC.** Chromium on your MPC's own touchscreen, with sound,
 downloads that land straight in `MPC Documents/Samples` and unpack there, and a navigation bar on
 every page because kiosk mode has none. Dig for samples on the machine you are going to chop them
 on, instead of shuttling files across from a computer.
 
-[![status](https://img.shields.io/badge/status-0.1.0--alpha-e0243f?style=flat-square)](#read-this-first)
-[![tested on](https://img.shields.io/badge/tested%20on-1%20MPC%20One%2B%20Gen%201-00c8b4?style=flat-square)](#read-this-first)
+[![status](https://img.shields.io/badge/status-0.1.1--alpha-e0243f?style=flat-square)](#read-this-first)
+[![works on](https://img.shields.io/badge/works%20on-MPC%20One%2B%20%C2%B7%20MPC%20Live%20II-00c8b4?style=flat-square)](#confirmed-working)
 [![made with](https://img.shields.io/badge/made%20with-a%20browser%20that%20should%20already%20be%20there-1f2937?style=flat-square)](#why-turning-it-on-means-turning-the-mpc-off)
 [![licence](https://img.shields.io/badge/licence-MIT-3b82f6?style=flat-square)](LICENSE)
 [![CI](https://img.shields.io/badge/CI-needs%20the%20hardware-4b5563?style=flat-square)](#contributing)
 
-**Version 0.1.0-alpha** · MIT licensed · built for the MPC One+ (Gen 1), tested on exactly one unit
+**Version 0.1.1-alpha** · MIT licensed · confirmed on the MPC One+ (Gen 1) up to firmware 3.10 and the MPC Live II up to 3.9.1
 
 ![The CrateSurf start page on the MPC panel](docs/start-page.png)
 
@@ -75,9 +75,23 @@ again. There is no side-by-side. Nothing about the app is modified, but it does 
 template picker rather than the project you had open, because it does not reload the last project
 on launch.
 
-## Tested on
+## Confirmed working
 
-One unit. This is the honest extent of the testing:
+Two models so far, both on rooted (SSH-enabled) firmware:
+
+| Model | Confirmed up to firmware |
+| --- | --- |
+| **MPC One+** (Gen 1) | **3.10** (also 3.4.2.13) |
+| **MPC Live II** | **3.9.1** |
+
+"Up to" means the newest firmware someone has actually run it on, not a limit anyone knows about.
+A newer firmware may well work; it just has not been checked yet. If you run it on a model or a
+firmware that is not in this table, an issue saying so (good or bad, with the model and firmware
+version) is how this table grows.
+
+## The development unit
+
+Everything was built and debugged on one MPC One+. This is that unit, in detail:
 
 | | |
 | --- | --- |
@@ -118,8 +132,9 @@ specific combination, and a device has to have all of it:
   runs from the Debian chroot the project builds. See
   [INSTALL.md](INSTALL.md#prerequisites).
 
-Other RK3288-era MPCs (Live, Live II, X) are the plausible candidates, and they are plausible
-rather than supported: different panel connectors, different partition layouts and different
+The MPC One+ and the MPC Live II are confirmed (see [Confirmed working](#confirmed-working)).
+Other RK3288-era MPCs (the first Live, the X) are the plausible next candidates, and they are
+plausible rather than confirmed: different panel connectors, different partition layouts and different
 firmware builds have all been seen across the range. Later MPCs on other SoCs are close to
 certainly out.
 

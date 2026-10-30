@@ -31,6 +31,14 @@ The project is alpha: expect the feature list below to move faster than the vers
 
 ## [Unreleased]
 
+### Docs
+
+- **Confirmed on two models.** The README now lists the MPC One+ (Gen 1), confirmed up to firmware
+  3.10, and the MPC Live II, confirmed up to firmware 3.9.1, both on rooted firmware. INSTALL.md's
+  prerequisites say the same, and the Live II moves out of "might work on".
+- **Planned input features on the roadmap:** an on-screen keyboard, Bluetooth keyboard support and
+  Bluetooth mouse support.
+
 ### Added
 
 - **A one-step installer for Windows, macOS and Linux.** One binary, its own SSH client, no runtime to

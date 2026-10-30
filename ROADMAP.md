@@ -67,6 +67,23 @@ sees a browser.
   not match. The installer's `--host` flag already covers the scripting case on any platform, so
   this is now a convenience rather than a gap.
 
+## Planned: input
+
+Right now the browser is driven by the touchscreen, or a USB keyboard plugged into the MPC. Typing
+a search or a URL on the glass is the part that hurts most. Queued, not started:
+
+- **An on-screen keyboard.** A keyboard on the panel itself, so a search box or the address field
+  can be filled in with nothing plugged in. Kiosk Chromium shows none, and weston does not supply
+  one on its own.
+- **Bluetooth keyboard support.** Pair a wireless keyboard and type into the browser the same way
+  a USB one already works.
+- **Bluetooth mouse support.** Pair a wireless mouse for pointing and scrolling. Note that a wired
+  mouse has not been in a port on the tested unit yet either (see
+  [KNOWN-ISSUES.md](KNOWN-ISSUES.md)), so the pointer path is still the less proven one.
+
+Neither Bluetooth item is checked against the hardware yet: whether the MPC's own Bluetooth can be
+used from the browser while the MPC app is stopped is the first thing to find out.
+
 ## Later
 
 The list in [KNOWN-ISSUES.md](KNOWN-ISSUES.md#missing-features) is the long version. The ones that

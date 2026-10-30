@@ -81,7 +81,7 @@ Two models so far, both on rooted (SSH-enabled) firmware:
 
 | Model | Confirmed up to firmware |
 | --- | --- |
-| **MPC One+** (Gen 1) | **3.10** (also 3.4.2.13) |
+| **MPC One+** (Gen 1) | **3.10** (also 3.9.1 and 3.4.2.13) |
 | **MPC Live II** | **3.9.1** |
 
 "Up to" means the newest firmware someone has actually run it on, not a limit anyone knows about.

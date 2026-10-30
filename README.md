@@ -268,9 +268,9 @@ Alpha means there is a list, and it is written down instead of discovered by you
 
 1. Saving first is on you, always (see risk 1 at the top).
 2. The port 8798 toggle has no authentication.
-3. No physical mouse has been in a port on the tested unit. A **keyboard** has, and works, hotplug
-   and all. The pointer path is proven through the kernel's own input stack with synthetic HID; the
-   last inch, a cable in a port, is what has not been tried.
+3. A **Bluetooth keyboard** does not work in the browser yet (confirmed on an MPC Live II); a USB
+   keyboard does, hotplug and all. A **Bluetooth mouse** works on the Live II. A wired mouse has
+   not been in a port on either unit yet.
 4. The three-finger hold can fire from a hand resting on the panel. Duration is the only thing left
    separating a deliberate hold from a hand sitting still for 2.5 s, and that is an accepted trade.
    `HOLD_MS` in `device/bin/touch-launcher.js` is the knob.
@@ -303,8 +303,10 @@ On the unit, by a person, not simulated:
   (`hw_ptr` advancing); it has since been heard, so this is not a number pretending to be a sound.
 - **Boot persistence**, surviving two cold reboots.
 
-What is left unproven is one thing: a physical **mouse**. That is in
-[KNOWN-ISSUES.md](KNOWN-ISSUES.md), along with the things that are missing rather than untested.
+Since then, a tester confirmed on an **MPC Live II** that a **Bluetooth mouse** works in the
+browser. A Bluetooth keyboard does not yet. What is left unproven is a wired mouse in a port. That
+is in [KNOWN-ISSUES.md](KNOWN-ISSUES.md), along with the things that are missing rather than
+untested.
 
 ## What is coming
 

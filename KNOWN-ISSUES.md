@@ -115,7 +115,17 @@ Browse the sample sites, not the open sewer.
 
 What is proven with real hardware in the loop and what is not, kept honest in both directions.
 
-### [MED] No physical mouse has been in a port on the tested unit
+### [MED] A Bluetooth keyboard does not work in the browser yet
+
+Confirmed on an MPC Live II: a paired Bluetooth keyboard does not type into the browser. A USB
+keyboard plugged into the MPC does, so use that for now. Getting Bluetooth keyboards working is the
+next item on the [roadmap](ROADMAP.md#planned-input).
+
+### [MED] No wired mouse has been in a port on the tested unit
+
+A **Bluetooth mouse** has since been confirmed working on an MPC Live II. A wired one has still not
+been tried on either unit.
+
 **A keyboard has, and it works**, including hotplug in the middle of a session and `Ctrl+Alt+B` as a
 way in; that is tested with a real keyboard, not only synthetic HID. The pointer is the one that has
 only been proven through the kernel's own input stack with a synthetic HID device over `/dev/uhid`,

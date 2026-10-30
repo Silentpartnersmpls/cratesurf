@@ -65,6 +65,20 @@ installed it). Units set up before that step existed, or installed with `--no-ha
 `passwd` over SSH. A key alone does not close it - sshd only accepts the "none" method for an account
 whose password field is empty, so the password is the part that matters.
 
+### [MED] After a reboot, the installer may say the MPC's host key has changed
+
+The installer remembers the MPC's SSH host key on the first connection and stops hard if it ever
+changes. On the tested unit, the MPC's **ECDSA** host key was regenerated at boot, while its
+**ED25519** key (built into the firmware) stayed the same. The installer's SSH client prefers ECDSA,
+so that is the key it remembered, and a second run after a reboot can stop with "the host key of …
+has changed" even though nothing is wrong. Plain `ssh` says "Host key verification failed".
+
+If you have not reflashed and you are on your own network: remove the MPC's line from
+`~/.cratesurf/known_devices` and run the installer again, which shows the fingerprint and asks once.
+For plain `ssh`, run `ssh-keygen -R <mpc-ip>`. The planned fix is to pin the ED25519 key, which does
+not change across reboots. Not yet confirmed: whether the ECDSA key changes on every boot or only on
+the first boot after the install.
+
 ### [MED] Losing both the key and the saved password locks you out of root
 Hardening is a one-way door unless the credential is kept. The installer saves the generated root
 password to `~/.cratesurf/root-<host>.txt` (mode 0600) on the computer that installed, next to its

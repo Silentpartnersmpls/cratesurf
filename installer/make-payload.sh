@@ -122,7 +122,16 @@ cp "$REPO"/device/home.html "$REPO"/device/calib.html "$REPO"/device/keys.html \
    "$REPO"/device/download-test.html "$STAGE/sysroot/opt/"
 cp "$REPO/device/weston.ini" "$STAGE/sysroot/etc/xdg/weston/weston.ini"
 
+# Both routes above leave sysroot/tmp out, because a tmp from a build or a device
+# holds somebody's leftovers. The directory itself has to exist, though: Chromium
+# aborts at launch without a /tmp for its singleton socket, and the 0.1.0-alpha
+# payload shipped without one. An empty, sticky, world-writable tmp is the
+# standard shape. browse-up.sh also creates it, for installs from older payloads.
+mkdir -p "$STAGE/sysroot/tmp"
+chmod 1777 "$STAGE/sysroot/tmp"
+
 [ -x "$STAGE/node/bin/node" ] || echo "warn: no node/bin/node in the payload"
+[ -d "$STAGE/sysroot/tmp" ] || { echo "FAIL: no sysroot/tmp in the payload"; exit 1; }
 [ -f "$STAGE/sysroot/opt/home.html" ] || { echo "FAIL: no start page in the payload"; exit 1; }
 [ -f "$STAGE/sysroot/opt/kb-ext/manifest.json" ] || { echo "FAIL: no nav bar in the payload"; exit 1; }
 [ -f "$STAGE/sysroot/etc/xdg/weston/weston.ini" ] || { echo "FAIL: no weston.ini in the payload"; exit 1; }

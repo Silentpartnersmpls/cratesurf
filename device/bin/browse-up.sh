@@ -34,6 +34,14 @@ fi
 
 mkdir -p "$R/run" "$S/run/xdg"
 chmod 700 "$S/run/xdg"
+# The chroot needs a writable, sticky /tmp. Chromium puts its ProcessSingleton
+# socket there and aborts at launch without it ("Failed to create socket
+# directory"), and weston and PulseAudio log there. Payloads leave tmp out, and
+# the 0.1.0-alpha release payload shipped with no tmp at all, so every install
+# from it switched modes and then showed nothing. Made here on every entry so an
+# install from that payload repairs itself.
+mkdir -p "$S/tmp"
+chmod 1777 "$S/tmp"
 rm -f "$S/run/weston.pid" "$S/run/chrome.pid"
 
 if [ "$(cat "$R/run/mode" 2>/dev/null)" = browse ]; then

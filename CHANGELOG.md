@@ -4,6 +4,19 @@ All notable changes to CrateSurf. Dates are the day the change landed on the tes
 
 The project is alpha: expect the feature list below to move faster than the version numbers.
 
+## [0.1.1-alpha] - 2026-10-30
+
+### Fixed
+
+- **Browse mode switched over and then showed nothing.** The 0.1.0-alpha payload had no `/tmp` in the
+  chroot, so Chromium aborted the moment it launched ("Failed to create socket directory": its
+  ProcessSingleton socket lives in `/tmp`), and weston and PulseAudio could not open their logs. The
+  MPC app stopped, the mode said `browse`, and the panel stayed empty. `browse-up.sh` now creates a
+  sticky `/tmp` in the chroot on every entry, which also repairs units installed from the 0.1.0-alpha
+  payload the next time they enter browse mode, and `make-payload.sh` ships an empty `sysroot/tmp`
+  and refuses to pack without one. The new payload is the 0.1.0-alpha payload with exactly those two
+  changes: one patched script and one empty directory.
+
 ## [Unreleased]
 
 ### Added

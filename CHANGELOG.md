@@ -8,6 +8,27 @@ The project is alpha: expect the feature list below to move faster than the vers
 
 ### Added
 
+- **A one-step installer for Windows, macOS and Linux.** One binary, its own SSH client, no runtime to
+  install first: run it, type the MPC's IP, press Enter. It probes the device and refuses anything it
+  does not recognise, verifies and streams the ~315 MB payload into `/data/browser`, seeds the
+  browser profile, installs the toggle, writes the unit into the read-only firmware rootfs, and then
+  checks that the service is running, that 8798 is listening and that the browser binary is really
+  there before it says it worked. Option 2 in its menu roots a stock unit the only way that exists:
+  it checks the firmware image, puts it on a USB stick and gives you the MPC-side keystrokes. It
+  deliberately does not download or bundle a firmware image. `installer/make-payload.sh` builds the
+  payload from a working unit or from a sysroot build, so a release is one file and one checksum.
+- **Manual browse mode stops dying when the SSH session ends.** `browse-up.sh` run from a shell now
+  re-execs into a transient unit of its own, and `browse-down.sh` stops that unit. See Fixed.
+
+### Fixed
+
+- **A browser started over SSH died seconds later, with nothing in any log.** `setsid` gives weston
+  and Chromium a new session but does not move them out of their systemd *cgroup*, and sshd's session
+  is its own scope: when the connection closed, systemd killed the scope and took the whole stack with
+  it. The service path was never affected, which is why the phone toggle and the three-finger hold
+  always worked and this looked like a firmware bug. Diagnosed on 3.10.0.49 by starting the stack
+  three ways and watching which one survived.
+
 - **Delete the `.zip` once it has unpacked.** A pack is 30-300 MB and the unpacked folder is what you
   wanted, so keeping both doubles the cost of every download on a 16 GB card. The row offers **DELETE
   ZIP** after an unpack that finished, and behind it a new loopback `/rm` route that only accepts a

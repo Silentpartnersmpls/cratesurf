@@ -9,6 +9,13 @@ S=$R/sysroot
 # an acvs that cannot open hw:1,0 comes back mute.
 "$R/bin/pulse-down.sh"
 
+# A stack started by hand lives in its own transient unit (see browse-up.sh), so
+# the unit is what has to go, not just the processes. Stopping it also takes the
+# cgroup with it, which is the point.
+if systemctl is-active --quiet mpc-browse-stack 2>/dev/null; then
+  systemctl stop mpc-browse-stack 2>/dev/null
+fi
+
 if [ -f "$R/run/exit.pid" ]; then
   kill "$(cat "$R/run/exit.pid")" 2>/dev/null
   rm -f "$R/run/exit.pid"

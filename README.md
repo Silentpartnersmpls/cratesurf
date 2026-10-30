@@ -139,6 +139,24 @@ not a microphone.
 
 ## Install
 
+**Use the installer.** Download it for your computer, run it, type the MPC's IP, press Enter:
+
+```
+cratesurf-installer-windows-amd64.exe     Windows
+cratesurf-installer-darwin-arm64          macOS (Apple silicon)
+cratesurf-installer-linux-amd64           Linux
+```
+
+It needs nothing installed on your machine - not Python, not Node, not OpenSSH. It checks the device,
+downloads and verifies the chroot, copies it over, installs the toggle, writes it into the firmware
+rootfs so it starts at boot, and then checks its own work. See
+**[installer/README.md](installer/README.md)**.
+
+An MPC needs root SSH before any of this can happen, and a stock unit does not have it. Option 2 in
+the installer's menu walks that through, including putting the firmware image on a USB stick.
+
+### From source, if you would rather see the steps
+
 You need: a computer that can `ssh` and `scp` to the MPC, root on the MPC, and a Debian or Ubuntu
 machine to build the chroot on (any recent one; the script sandboxes `apt` and installs nothing
 system-wide).
@@ -161,10 +179,9 @@ Then, on the MPC itself, hold **three fingers on the glass for 2.5 seconds**, or
 Every step, every prerequisite, what each one writes, how to verify it and how to remove it again
 is in **[INSTALL.md](INSTALL.md)**. Follow that rather than improvising; the order matters.
 
-**And yes, this is the hard part.** That block assumes root SSH on a device with no terminal app, and
-a Debian box with a package manager on another machine. It works and it is reversible, but if you
-are looking at it going "hell nah", that is a completely fair reaction, and the graphical installer
-in [ROADMAP.md](ROADMAP.md) is aimed straight at you.
+**That block is the hard part**, and it is why the installer exists: it assumes root SSH on a device
+with no terminal app, and a Debian box with a package manager on another machine. Both routes land in
+the same place; the installer just does it without asking you to learn any of it.
 
 ![The REC button recording the browser's own output](docs/rec-take.png)
 

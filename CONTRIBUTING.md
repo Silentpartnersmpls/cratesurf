@@ -43,6 +43,9 @@ In rough order of value:
 build-sysroot.sh              builds the armhf Debian chroot on your PC, ships it to /data
 deploy.sh                     copies device files to the MPC and seeds the Chromium profile
 deploy/install-service.sh     installs the 8798 toggle; --boot also writes the firmware rootfs
+installer/                    the front door: Go binary for windows/mac/linux, its own SSH client,
+                              a payload downloader, and the guided root flow. make-payload.sh builds
+                              the tarball, build.sh cross-compiles. See installer/README.md.
 deploy/install-rootfs-unit.sh runs ON the MPC, writes the unit into /dev/mmcblk0p6
 
 device/bin/browse-up.sh       enter browse mode: autosave, mounts, stop acvs, pulse, weston, chromium

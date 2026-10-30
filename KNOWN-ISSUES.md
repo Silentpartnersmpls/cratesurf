@@ -1,7 +1,8 @@
 # Known issues
 
 **Version 0.1.0-alpha.** Everything below is true of the current code on the one unit it has been
-run on (MPC One+ Gen 1, firmware 3.4.2.13). Nothing here is a rumour; each item says how it was
+run on (MPC One+ Gen 1, firmware 3.4.2.13, and again on 3.10.0.49 after the 2026-10-29 update).
+Nothing here is a rumour; each item says how it was
 found, what it does to you, and what to do about it.
 
 Severity: **[HIGH]** data loss or a dead panel, **[MED]** you will hit it in normal use,
@@ -28,6 +29,24 @@ it. **Name and save once before your first browse-mode switch.**
 The app does not reload the last project on launch. You have to pick it again (and merge the
 autosave copy). `az01-launch-MPC` forwards arguments to `/usr/bin/MPC`, so a project-autoload route
 may exist, but nobody has built it.
+
+---
+
+## Firmware updates
+
+### [HIGH] A firmware update removes the autostart, and it looks like it did not
+An update replaces `/dev/mmcblk0p6`, and that is where the boot copy of `mpc-browse.service` lives.
+The copy in `/etc` sits in the overlay on `/data` and survives, so after the update `systemctl
+is-enabled mpc-browse` still says `enabled` and the unit file is still there - but the overlay is
+mounted a couple of seconds into boot, after systemd has already worked out what to start, so
+nothing starts. What you see is: no port 8798, and the three-finger hold doing nothing (the launcher
+is loaded by that service), with no journal entry to explain either.
+
+Verified on the 3.4.2.13 to 3.10.0.49 update: `/data` came through completely untouched, chroot,
+node runtime, scripts and all. Only p6 was replaced.
+
+**Fix:** `ssh root@<mpc-ip> /data/browser/install-rootfs-unit.sh`, or rerun the installer. It refuses
+rather than half-installing if `/` is no longer `mmcblk0p6`.
 
 ---
 

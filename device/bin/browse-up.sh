@@ -12,6 +12,26 @@ S=$R/sysroot
 # on any MPC that does not have it.
 NODE=$R/node/bin/node
 
+# A hand-run call has to detach from the caller's cgroup, not just its session.
+#
+# `setsid` below gives weston and Chromium their own session, which is why they
+# survive the shell that started them, but it does not move them out of the
+# *cgroup*: systemd puts an ssh login in its own scope and kills the whole scope
+# when the connection ends. So `ssh mpc /data/browser/bin/browse-up.sh` used to
+# bring the browser up and have it die a few seconds later with nothing in any
+# log, because the death is a SIGKILL to a cgroup, not a crash. Hours went into
+# blaming the 3.10 firmware for that.
+#
+# The service path does not have the problem: its cgroup lives as long as the
+# service, which is why the phone toggle and the three-finger hold always worked.
+# INVOCATION_ID is set by systemd for anything it starts, so its absence is the
+# signal that this was typed at a prompt and needs a unit of its own.
+if [ -z "${INVOCATION_ID:-}" ] && [ -z "${BROWSE_STACK:-}" ] && command -v systemd-run >/dev/null 2>&1; then
+  exec systemd-run --unit=mpc-browse-stack --collect --quiet \
+    /bin/sh -c "BROWSE_STACK=1 '$R/bin/browse-up.sh' ${1:-}; exec sleep infinity"
+  # exec'd, so nothing below runs in the caller's scope.
+fi
+
 mkdir -p "$R/run" "$S/run/xdg"
 chmod 700 "$S/run/xdg"
 rm -f "$S/run/weston.pid" "$S/run/chrome.pid"

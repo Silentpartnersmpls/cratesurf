@@ -1,5 +1,10 @@
 # Installing CrateSurf
 
+**Short version: use [`installer/`](installer/README.md) instead of this document.** One binary for
+Windows, macOS or Linux, one question (the MPC's IP), and it does everything below except root the
+MPC for you, which it walks you through separately. This document is the long way round, and it is
+worth reading even if you use the installer, because it is what the installer is doing.
+
 Follow this in order. Every step is reversible, and [Uninstalling](#uninstalling) has the exact
 reverse of everything this document adds.
 
@@ -211,10 +216,14 @@ The binary exists and the size is somewhere between 700 MB and 800 MB.
 
 ```sh
 ssh $MPC_HOST /data/browser/bin/browse-up.sh
-```
+```Expect `mpc-autosave: already on (300s)` or `enabled`, then `browse mode up`. The panel should now be
+the CrateSurf start page, and `systemctl is-active acvs` should say `inactive`.
 
-Expect `mpc-autosave: already on (300s)` or `enabled`, then `browse mode up`. The panel should now
-be the CrateSurf start page, and `systemctl is-active acvs` should say `inactive`.
+`browse-up.sh` detaches itself when it is run this way (into the transient unit
+`mpc-browse-stack`), because a stack left in the SSH session's cgroup is killed the moment the
+connection closes, with nothing in any log. That is why this command may print only the two lines
+from `mpc-autosave` and `pulse-up`, or nothing at all, and still be working. `browse-down.sh` stops
+that unit too, so the two scripts stay a pair.
 
 **4. Sound.** On the start page, tap a site card and play something. If it is silent, the sound
 server failed to start: `ssh $MPC_HOST 'tail -20 /data/browser/run/pulse.out'`.

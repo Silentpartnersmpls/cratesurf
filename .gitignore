@@ -9,6 +9,11 @@ mpcsys/
 # Chromium's profile, if anyone ever runs a build in-tree.
 chrome-profile/
 
+# Installer binaries and payloads. The build is reproducible from source, and the
+# payload is a 300 MB artifact that belongs in a release, not in git.
+installer/build/
+installer/dist/
+
 # Device logs and run state, in case someone copies them back for a bug report.
 *.log
 *.pid

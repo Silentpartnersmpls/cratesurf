@@ -47,12 +47,14 @@ This is the real reason most people close the tab. "Build an armhf chroot on a D
 `scp` it to the MPC" is a fair description of the work and an unfair thing to ask before someone
 sees a browser.
 
-- **A graphical installer, which is what the next pass is about.** It runs on your computer, not on
-  the MPC: the MPC has no desktop environment to run an installer in, and no place to put a window.
-  A small app that checks your device, builds or downloads the sysroot, offers a USB stick or the
-  network as the transfer route, copies everything over, installs the unit, and tells you plainly
-  whether it worked. The scripts it would drive already exist; the installer is the missing front
-  door.
+- **The installer. Done.** `installer/` is one binary for Windows, macOS and Linux, with its own SSH
+  client and nothing to install first: type the MPC's IP, press Enter, and it checks the device,
+  streams the payload, installs the toggle, writes the boot copy and then verifies its own work. It
+  also walks through rooting a stock unit, which is a firmware image on a USB stick because that is
+  the only way in. What is still missing is the release itself: the payload has to be published
+  somewhere with its checksum and the binaries have to be built with that URL baked in
+  (`installer/make-payload.sh` and `build.sh` do both). Until then the installer takes a local
+  tarball with `--payload`.
 - **A USB stick route.** Build the sysroot on your computer, write it to a stick, plug the stick into
   the MPC, copy it into `/data`. That removes the build machine from the device's side of the job
   and makes a reinstall a stick instead of a `scp`.
@@ -62,7 +64,8 @@ sees a browser.
   makes that first connection one button instead of a paragraph of commands.
 - **A one-line install script**, for the people who are comfortable with a shell and would rather
   not read three pages. Same steps, checked at runtime, refusing to continue when the device does
-  not match.
+  not match. The installer's `--host` flag already covers the scripting case on any platform, so
+  this is now a convenience rather than a gap.
 
 ## Later
 

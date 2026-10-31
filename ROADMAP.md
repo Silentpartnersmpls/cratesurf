@@ -3,6 +3,19 @@
 No dates. This is a list of what is actually queued, in roughly the order it matters, written down
 so nobody has to guess whether a thing is planned or just absent.
 
+## Rendering and scrolling, now
+
+Software raster is the default because the GPU path tears the panel, and that trade is written down
+in [the development unit](README.md#the-development-unit). The next pass is to make scrolling usable
+without tearing. The first two switches are Panfrost AFBC (`PAN_MESA_DEBUG=noafbc`, behind
+`/data/browser/run/panfrost-noafbc`) and weston's direct scanout of a fullscreen client
+(`device/bin/scanout-toggle.sh` flips it for the session); then hold GPU compositing back
+(`--disable-gpu-compositing`), keep GPU compositing but rasterise on the CPU
+(`--disable-gpu-rasterization`), and try `--use-gl=egl` and a newer Mesa. Every candidate has to be
+judged by the frames on the glass, not just the frame clock; the benchmark that endorsed the first
+GPU build measured timing and missed whole black frames and a missing nav bar. Until a configuration
+presents complete frames by hand, it stays behind `/data/browser/run/chrome-gpu-raster`.
+
 ## The download side, next
 
 Downloads work and land in `MPC Documents/Samples` where the MPC can see them. What is missing is
@@ -70,7 +83,8 @@ sees a browser.
 ## Planned: input
 
 Right now the browser is driven by the touchscreen, an on-screen keyboard on the glass, a USB
-keyboard plugged into the MPC, or (on the MPC Live II, at least) a Bluetooth mouse.
+keyboard plugged into the MPC, a Bluetooth keyboard paired from the MPC's own Bluetooth screen, or
+(on the MPC Live II, at least) a Bluetooth mouse.
 
 - **An on-screen keyboard. Done.** The bar carries a keyboard key, and a panel rises above the bar
   with a number row, three full letter rows, Shift, Backspace, Enter, Space, a symbols page and
@@ -84,12 +98,12 @@ keyboard plugged into the MPC, or (on the MPC Live II, at least) a Bluetooth mou
   [KNOWN-ISSUES.md](KNOWN-ISSUES.md).
 - **Bluetooth mouse support. Works.** Confirmed by a tester on an MPC Live II: a paired Bluetooth
   mouse points and clicks in the browser with nothing added. Not yet tried on the One+.
-- **Bluetooth keyboard support. Next.** On the same Live II a Bluetooth keyboard does not work in
-  the browser yet. This is the next thing being worked on. On the One+, a paired Bluetooth keyboard
-  does register as an HID input node that weston opens like a USB one, which is a reason to think it
-  will land once pairing is done from the MPC's own Bluetooth screen - the unit has no
-  `bluetoothctl` or `btmgmt` to pair with from a shell, and that is the part still open. Until then,
-  a USB keyboard plugged into the MPC does work.
+- **Bluetooth keyboard support. Works on the One+.** Pair it from the MPC's own Bluetooth screen,
+  then come back into browse mode: it appears as an ordinary HID node and types like the USB keyboard,
+  including making the on-screen keyboard stand down. Confirmed on the One+ on 2026-10-31. The unit
+  has no `bluetoothctl` or `btmgmt`, so pairing from a shell is not an option. The earlier Live II
+  report (a paired keyboard did not type) predates this pairing route and has not been retried; a USB
+  keyboard is the fallback there.
 
 ## Later
 

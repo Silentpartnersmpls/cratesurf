@@ -4,6 +4,33 @@ All notable changes to CrateSurf. Dates are the day the change landed on the tes
 
 The project is alpha: expect the feature list below to move faster than the version numbers.
 
+## [0.1.2-alpha] - 2026-10-31
+
+### Added
+
+- **A Bluetooth keyboard types in the browser once it is paired from the MPC itself.** The unit has
+  no `bluetoothctl` or `btmgmt`; pairing belongs to Akai's own Bluetooth screen. After that the
+  keyboard appears as an ordinary HID input node, libinput decodes it, and it types exactly like the
+  USB keyboard - including making the on-screen keyboard stand down. Confirmed on the MPC One+ on
+  2026-10-31. The earlier Live II report (a paired keyboard did not type) predates this pairing route
+  and has not been retried.
+
+### Changed
+
+- **GPU raster was tried, measured, and backed out the same night.** `chrome-up.sh` had passed
+  `--disable-gpu` since the first build, on a documented belief that the Mali here had no usable
+  stack. That belief was wrong: the chroot has Mesa EGL on Panfrost (`Mali-T760`) and weston already
+  hands Chromium a wayland socket. Removing the flag is 30x faster on paper, 561 ms median between
+  frames down to 16.6 ms, 1.7 fps to 60.2, three runs, same page both times.
+- **And it tears.** On the glass, scrolling feels wrong and a page load shows whole black frames and
+  half-drawn frames with the nav bar missing. The benchmark that endorsed it measured frame timing
+  and never inspected a single frame, which is why it passed a build that is unusable by hand. Speed
+  that tears is worse than a page that is slow, so the flag is back and software raster is the
+  default.
+- **The GPU is now opt-in behind a file, not a script edit.** `touch /data/browser/run/chrome-gpu-raster`
+  drops `--disable-gpu` on the next start and `rm` puts it back. `run/chrome-flags` remains additive
+  for anyone testing `--disable-gpu-compositing`, `--use-gl=egl` or a newer Mesa against this driver.
+
 ## [0.1.1-alpha] - 2026-10-30
 
 ### Fixed

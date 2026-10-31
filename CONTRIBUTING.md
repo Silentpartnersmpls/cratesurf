@@ -69,7 +69,8 @@ device/calib.html             prints touch coordinates, for checking the panel m
 device/keys.html              prints key events, for checking a keyboard
 device/weston.ini             connector DSI-1, rotate-90 to get 1280x800
 
-tools/touch3.c                synthetic multi-touch digitizer (holds N fingers, or taps a point)
+tools/touch3.c                synthetic multi-touch digitizer (holds N fingers, taps or swipes a point, or drags a line)
+tools/fbgrab.c                capture the KMS framebuffer as PPM, once or as a sequence
 tools/grabcheck.c             who holds each input device exclusively, plus axis ranges
 tools/probe-device.sh         read-only compatibility probe for an unknown MPC
 ```
@@ -110,10 +111,22 @@ $cc -march=armv7-a -mfpu=neon-vfpv4 -mfloat-abi=hard -O2 -o build/touch3 tools/t
 scp build/touch3 $MPC_HOST:/tmp/
 ssh $MPC_HOST '/tmp/touch3 tap 972 744'        # one tap at screen 972,744
 ssh $MPC_HOST '/tmp/touch3 hold 3000 3'        # 3 fingers, 3 s
+ssh $MPC_HOST '/tmp/touch3 swipe 640 600 0 -400 600 20'  # scroll up 400 px
 ```
 
-Tap coordinates are screen coordinates. Under them is a rotation (`display_x = (max_y - y) *
-1280/max_y`, `display_y = x * 800/max_x`), which the tool undoes for you.
+Tap and swipe coordinates are screen coordinates. Under them is a rotation (`display_x =
+(max_y - y) * 1280/max_y`, `display_y = x * 800/max_x`), which the tool undoes for you.
+
+**Capture what the panel actually showed.** `tools/fbgrab.c` reads `/dev/fb0`, which on the MPC is
+the KMS scanout framebuffer, and writes binary PPM. A frame clock is not a frame: this is how you
+see the whole black and half-drawn frames that a 60 fps benchmark missed.
+
+```sh
+$cc -march=armv7-a -mfpu=neon-vfpv4 -mfloat-abi=hard -O2 -o build/fbgrab tools/fbgrab.c
+scp build/fbgrab $MPC_HOST:/tmp/
+ssh $MPC_HOST '/tmp/fbgrab /tmp/scroll 40 25 & /tmp/touch3 swipe 640 600 0 -400 600 20; wait'
+scp "$MPC_HOST:/tmp/scroll-*.ppm" /tmp/
+```
 
 **Test keyboard input without a keyboard.** `device/bin/hid-inject.js` creates a synthetic USB HID
 keyboard and mouse over `/dev/uhid`:

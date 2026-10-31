@@ -115,11 +115,17 @@ Browse the sample sites, not the open sewer.
 
 What is proven with real hardware in the loop and what is not, kept honest in both directions.
 
-### [MED] A Bluetooth keyboard does not work in the browser yet
+### [LOW] A Bluetooth keyboard has to be paired from the MPC's own Bluetooth screen
 
-Confirmed on an MPC Live II: a paired Bluetooth keyboard does not type into the browser. A USB
-keyboard plugged into the MPC does, so use that for now. Getting Bluetooth keyboards working is the
-next item on the [roadmap](ROADMAP.md#planned-input).
+Bluetooth on this unit belongs to Akai's own stack; the root shell has `btmon` and no `bluetoothctl`
+or `btmgmt`, so there is nothing to pair with from a terminal. Pair the keyboard from the MPC's
+Bluetooth screen, then come back into browse mode: it appears as an ordinary HID input node,
+libinput decodes it, and it types into the browser exactly like the USB keyboard that is already
+proven - including making the on-screen keyboard stand down. Confirmed on the MPC One+ on
+2026-10-31. The earlier Live II report (a paired keyboard did not type) predates this pairing route
+and has not been retried; a USB keyboard remains the fallback there. `device/keys.html` shows whether
+events are arriving at all, and `/proc/bus/input/devices` on the unit says which node they are
+coming from.
 
 ### [MED] No wired mouse has been in a port on the tested unit
 
@@ -217,14 +223,6 @@ runs in the top frame only. There is no paste: `Ctrl` gives you select-all, copy
 `Ctrl+V` would need the clipboard permission this deliberately does not ask for. Keys go in as
 `insertText` with a `setRangeText` fallback, so a page that watches `keydown` for ordinary letters
 (rare, but they exist) sees nothing - only Enter, Tab, Esc and the arrows are dispatched as events.
-
-### [LOW] A Bluetooth keyboard is paired on the MPC, not from here
-Bluetooth on this unit belongs to Akai's own stack; the root shell has `btmon` and no `bluetoothctl`
-or `btmgmt`, so there is nothing to pair with from a terminal. Pair the keyboard from the MPC's
-Bluetooth screen, then come back into browse mode: it appears as an ordinary HID input node,
-libinput decodes it, and it types into the browser exactly like the USB keyboard that is already
-proven - including making the on-screen keyboard stand down. `device/keys.html` shows whether events
-are arriving at all, and `/proc/bus/input/devices` on the unit says which node they are coming from.
 
 ### [LOW] An unpack job is remembered in memory only
 The panel's per-file job state - running, done, and the **DELETE ZIP** offer that only follows a

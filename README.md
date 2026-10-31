@@ -11,7 +11,7 @@ on, instead of shuttling files across from a computer.
 [![licence](https://img.shields.io/badge/licence-MIT-3b82f6?style=flat-square)](LICENSE)
 [![CI](https://img.shields.io/badge/CI-needs%20the%20hardware-4b5563?style=flat-square)](#contributing)
 
-**Version 0.1.1-alpha** · MIT licensed · confirmed on the MPC One+ (Gen 1) up to firmware 3.10 and the MPC Live II up to 3.9.1
+**Version 0.1.2-alpha** · MIT licensed · confirmed on the MPC One+ (Gen 1) up to firmware 3.10 and the MPC Live II up to 3.9.1
 
 ![The CrateSurf start page on the MPC panel](docs/start-page.png)
 
@@ -103,6 +103,20 @@ Everything was built and debugged on one MPC One+. This is that unit, in detail:
 | Panel | `DSI-1`, 800x1280 portrait, rotated by weston to 1280x800 landscape |
 | Audio | card 1 `ACVA` (`hw:1,0`), behind PulseAudio |
 | Browser | Chromium 150.0.7871.100 in the chroot, weston 10.0.1, `--disable-gpu` |
+
+**There is a GPU here, and it does not hold up on this panel.** The chroot has Mesa EGL for the
+Mali-T760 and weston already hands Chromium a wayland socket, so `--disable-gpu` is a choice, not a
+limitation. Taking it out is genuinely much faster on paper: the same fixed card-grid page went from
+1.7 fps (561 ms median between frames) to 60.2 fps (16.6 ms median, 16.9 ms p95, three runs). On the
+glass it is not usable. Scrolling feels wild, and during a page load the framebuffer shows whole
+black frames and half-drawn frames with the nav bar missing entirely. **Speed that tears is worse
+than a page that is slow**, so software raster is the default and the GPU is opt-in:
+`touch /data/browser/run/chrome-gpu-raster` and the next start drops `--disable-gpu`, `rm` the file
+to go back. If you want to chase it, the suspects are `--disable-gpu-compositing`, `--use-gl=egl`,
+and a newer Mesa, all of which `run/chrome-flags` can try without an edit. The lesson worth keeping:
+the benchmark that made this look fixed measured frame **timing** only and never looked at frame
+**contents**, so it could not have caught a broken frame. Measured on 3.10.0.49, Chromium
+150.0.7871.100.
 
 The MPC firmware version matters, and two of them have now been through it. Everything here was
 found on 3.4.2.13 and re-verified on 3.10.0.49 after the October 2026 update: `/data` came through
@@ -279,14 +293,17 @@ Alpha means there is a list, and it is written down instead of discovered by you
 
 1. Saving first is on you, always (see risk 1 at the top).
 2. The port 8798 toggle has no authentication.
-3. A **Bluetooth keyboard** does not work in the browser yet (confirmed on an MPC Live II); a USB
-   keyboard does, hotplug and all. A **Bluetooth mouse** works on the Live II. A wired mouse has
-   not been in a port on either unit yet.
+3. A **Bluetooth keyboard** works on the MPC One+ after it is paired from the MPC's own Bluetooth
+   screen; there is no `bluetoothctl` in the shell. A USB keyboard works too, hotplug and all. A
+   **Bluetooth mouse** works on the Live II. A wired mouse has not been in a port on either unit yet.
 4. The three-finger hold can fire from a hand resting on the panel. Duration is the only thing left
    separating a deliberate hold from a hand sitting still for 2.5 s, and that is an accepted trade.
    `HOLD_MS` in `device/bin/touch-launcher.js` is the knob.
-5. Pages are usable, not snappy. There is no GPU: the Mali driver here is a vendor blob, so
-   Chromium rasterises in software on an RK3288.
+5. Pages are usable, not snappy, and that is deliberate. Software raster on two RK3288 cores costs
+   about 1.7 fps of scrolling on a heavy card grid, which is bad but correct; the GPU path is 30x
+   faster and tears the panel, so it stays opt-in behind `run/chrome-gpu-raster` (see the device
+   table). The honest fix is a newer compositor or a driver that presents complete frames on this
+   Mali, not a flag.
 
 ## What has actually been tested
 
@@ -294,6 +311,8 @@ On the unit, by a person, not simulated:
 
 - **A USB keyboard**, plugged into the MPC, driving the browser and the bar, including hotplug in
   the middle of a session and `Ctrl+Alt+B` as a way in.
+- **A Bluetooth keyboard**, paired from the MPC's own Bluetooth screen, typing into the browser and
+  making the on-screen keyboard stand down. Confirmed on the MPC One+ on 2026-10-31.
 - **The three-finger hold**, with real fingers on the glass, repeatedly. It is also unit-tested and
   fires from a synthetic digitizer, but the fingers are the part that counts and they work.
 - **Downloads**, from real sites, landing in `MPC Documents/Samples` and being there afterwards,
@@ -328,19 +347,20 @@ On the unit, by a person, not simulated:
 - **Boot persistence**, surviving two cold reboots.
 
 Since then, a tester confirmed on an **MPC Live II** that a **Bluetooth mouse** works in the
-browser. A Bluetooth keyboard does not yet. What is left unproven is a wired mouse in a port. That
-is in [KNOWN-ISSUES.md](KNOWN-ISSUES.md), along with the things that are missing rather than
-untested.
+browser. The Bluetooth keyboard is confirmed on the One+ through the MPC's own pairing screen; the
+earlier Live II result has not been retried with that route. What is left unproven is a wired mouse
+in a port. That is in [KNOWN-ISSUES.md](KNOWN-ISSUES.md), along with the things that are missing
+rather than untested.
 
 ## What is coming
 
 [ROADMAP.md](ROADMAP.md) has the list. The short version, because these are the things people ask
-for first: **choosing where a download goes** instead of everything landing in the library, and a
-**graphical installer** so the first connection does not have to be a paragraph of shell.
+for first: **a graphical installer** so the first connection does not have to be a paragraph of
+shell, the installer release with its payload URL and checksum baked in, a **USB-stick route**, and
+the scrolling work above.
 
-And the one that matters most for anyone finding this repo cold: **a graphical installer**. The
-build-a-chroot-over-SSH route above is honest and it works, but it is a lot to ask before you have
-seen a browser, and we know it. A GUI installer and a USB-stick route are the next pass.
+The build-a-chroot-over-SSH route above is honest and it works, but it is a lot to ask before you
+have seen a browser, and we know it.
 
 ## Contributing
 

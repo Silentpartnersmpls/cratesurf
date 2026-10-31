@@ -5,7 +5,7 @@ downloads that land straight in `MPC Documents/Samples` and unpack there, and a 
 every page because kiosk mode has none. Dig for samples on the machine you are going to chop them
 on, instead of shuttling files across from a computer.
 
-[![status](https://img.shields.io/badge/status-0.1.1--alpha-e0243f?style=flat-square)](#read-this-first)
+[![status](https://img.shields.io/badge/status-0.1.2--alpha-e0243f?style=flat-square)](#read-this-first)
 [![works on](https://img.shields.io/badge/works%20on-MPC%20One%2B%20%C2%B7%20MPC%20Live%20II-00c8b4?style=flat-square)](#confirmed-working)
 [![made with](https://img.shields.io/badge/made%20with-a%20browser%20that%20should%20already%20be%20there-1f2937?style=flat-square)](#why-turning-it-on-means-turning-the-mpc-off)
 [![licence](https://img.shields.io/badge/licence-MIT-3b82f6?style=flat-square)](LICENSE)
@@ -355,9 +355,9 @@ rather than untested.
 ## What is coming
 
 [ROADMAP.md](ROADMAP.md) has the list. The short version, because these are the things people ask
-for first: **a graphical installer** so the first connection does not have to be a paragraph of
-shell, the installer release with its payload URL and checksum baked in, a **USB-stick route**, and
-the scrolling work above.
+for first: a **USB-stick route** and the scrolling work above. The graphical installer is in
+[Releases](https://github.com/Silentpartnersmpls/cratesurf/releases), with its payload URL and
+checksum baked in, so the first connection does not have to be a paragraph of shell.
 
 The build-a-chroot-over-SSH route above is honest and it works, but it is a lot to ask before you
 have seen a browser, and we know it.

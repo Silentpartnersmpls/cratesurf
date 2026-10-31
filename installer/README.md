@@ -1,7 +1,8 @@
 # CrateSurf installer
 
 One program. You run it on your computer, type the MPC's IP, press Enter, and it
-puts CrateSurf on the MPC.
+puts CrateSurf on the MPC. The current binaries are in
+[GitHub Releases](https://github.com/Silentpartnersmpls/cratesurf/releases).
 
 It needs nothing installed on your machine: no Python, no Node, no OpenSSH, no
 package manager. It carries its own SSH client, so Windows, macOS and Linux all

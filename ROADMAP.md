@@ -64,10 +64,10 @@ sees a browser.
   client and nothing to install first: type the MPC's IP, press Enter, and it checks the device,
   streams the payload, installs the toggle, writes the boot copy and then verifies its own work. It
   also walks through rooting a stock unit, which is a firmware image on a USB stick because that is
-  the only way in. What is still missing is the release itself: the payload has to be published
-  somewhere with its checksum and the binaries have to be built with that URL baked in
-  (`installer/make-payload.sh` and `build.sh` do both). Until then the installer takes a local
-  tarball with `--payload`.
+  the only way in. The installer and its payload are published as a pre-release in
+  [GitHub Releases](https://github.com/Silentpartnersmpls/cratesurf/releases), with the payload URL
+  and checksum baked into the binaries. The source build still takes a local tarball with
+  `--payload`.
 - **A USB stick route.** Build the sysroot on your computer, write it to a stick, plug the stick into
   the MPC, copy it into `/data`. That removes the build machine from the device's side of the job
   and makes a reinstall a stick instead of a `scp`.

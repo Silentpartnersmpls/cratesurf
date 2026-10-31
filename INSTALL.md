@@ -1,9 +1,10 @@
 # Installing CrateSurf
 
-**Short version: use [`installer/`](installer/README.md) instead of this document.** One binary for
-Windows, macOS or Linux, one question (the MPC's IP), and it does everything below except root the
-MPC for you, which it walks you through separately. This document is the long way round, and it is
-worth reading even if you use the installer, because it is what the installer is doing.
+**Short version: download the installer from [Releases](https://github.com/Silentpartnersmpls/cratesurf/releases) instead of following this document.** One binary for Windows, macOS or Linux, one
+question (the MPC's IP), and it does everything below except root the MPC for you, which it walks
+you through separately. See [`installer/`](installer/README.md) for its own notes. This document is
+the long way round, and it is worth reading even if you use the installer, because it is what the
+installer is doing.
 
 Follow this in order. Every step is reversible, and [Uninstalling](#uninstalling) has the exact
 reverse of everything this document adds.

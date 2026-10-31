@@ -215,10 +215,21 @@ the same place; the installer just does it without asking you to learn any of it
 - **`http://<mpc-ip>:8798/`** from your phone or PC, then **BROWSE ON THE MPC**.
 
 **The bar.** Kiosk mode has no browser chrome, so the extension puts one in the bottom right of
-every page: start page, back, forward, reload, downloads, **REC**, **MPC**, and a minimize box that
-collapses the bar to a tab. It lives in a shadow root so a site's CSS cannot restyle or hide it,
-and it re-appends itself if an ad covers it. **MPC** is the guaranteed way out: one tap ends the
-session and hands the panel back, whatever the page is doing.
+every page: start page, back, forward, reload, downloads, **keyboard**, **REC**, **MPC**, and a
+minimize box that collapses the bar to a tab. It lives in a shadow root so a site's CSS cannot
+restyle or hide it, and it re-appends itself if an ad covers it. **MPC** is the guaranteed way out:
+one tap ends the session and hands the panel back, whatever the page is doing.
+
+**Typing, with no keyboard on the glass.** The unit has no keyboard and this Chromium build ships no
+virtual-keyboard extension, so the bar carries one: the keyboard key slides a panel up above the bar,
+and tapping any text box on a page does the same by itself (a page's own autofocus does not, so an
+empty search box cannot pop it in your face). Number row, three letter rows in full, Shift,
+Backspace, Enter, Space, a symbols page, and Esc / Tab / arrows in the title strip. It keys into the
+page - the field you are in, or the one you were last in - and dispatches real Enter, Tab and arrow
+key events, so a site's own search box behaves exactly as it would with a keyboard plugged in. It
+gets out of the way when you tap elsewhere, when the page navigates, and the moment a real keyboard
+starts typing. Two limits it does not pretend to cross: it types into the page, so not into the PDF
+viewer and not into a cross-origin iframe, and it has no paste.
 
 **Downloads** land in `MPC Documents/Samples` by default, which is the MPC's own sample folder, and
 **SAVE TO** on the save card sends one to any other folder under `MPC Documents` instead -
@@ -296,7 +307,20 @@ On the unit, by a person, not simulated:
 - **Unpacking**, from the panel: a 28 MB pack of 101 files unpacked into the sample folder and then
   compared file by file against the tree it was zipped from, 101 of 101 identical by sha256, empty
   folder included, nothing left in a scratch folder. A zip whose names escape the destination was
-  refused with the reason on the row and nothing written.
+  refused with the reason on the row and nothing written. Then a real 360 MB pack from a sample site:
+  156 files and 530 MB in 87 s with the counter moving the whole way, every CRC checked on the way
+  out, the folder the MPC could read beside the zip, and a second **UNPACK** press making a `2`
+  folder instead of overwriting the first.
+- **The on-screen keyboard**, on the unit with no keyboard attached. Every tap was a synthetic HID
+  contact rather than a finger, so this is the browser path and not the calibration, but every step
+  of it ran on the glass: it opened by itself when a text box was tapped (the start page's LOCATION
+  field, and Freesound's own search box on a real https page), typed into the focused field with
+  Shift, space, backspace and the symbols page all landing correctly, submitted the start page's
+  form with **ENTER**, ran a real search on Freesound by sending it an Enter key event (17,002
+  results), closed on a tap elsewhere, closed on its own ✕ button and on a tap of the bar's key, and
+  closed itself the instant a real key arrived from the virtual HID keyboard. Reading its own text
+  back off the screen is what caught the one real bug: the letter rows stopped at `l`, so
+  `freesound.org` came out `treesouhd.org`.
 - **REC**, producing a WAV whose loudest bin is exactly the frequency the page was playing.
 - **Getting back out**, by the MPC button and by the start page, with the MPC app returning.
 - **Sound**, listened to on the unit's own output. Audio was already proven at the signal level

@@ -17,8 +17,6 @@
 const fs = require('fs');
 const path = require('path');
 const zlib = require('zlib');
-const { Transform, PassThrough } = require('stream');
-const { pipeline } = require('stream/promises');
 
 const SIG_EOCD = 0x06054b50;
 const SIG_EOCD64 = 0x06064b50;
@@ -181,6 +179,21 @@ function safeName(name) {
   return null;
 }
 
+// One file at a time, each one whole.
+//
+// This used to pipe a stream per entry: createReadStream -> inflate -> write
+// stream. On the device that pipeline could hang for ever with no error and no
+// progress at all - the server sat idle with only the zip's descriptor open, the
+// output file never created - while the identical call finished the identical
+// pack in a fresh process. Whatever holds a libuv pool thread is invisible from
+// inside this function, so the extraction stopped using the pool entirely:
+// positional reads and inflateRawSync on the calling thread, one descriptor for
+// the archive, and a yield every few files so the status route still answers.
+//
+// The largest file in a real sample pack is a couple of MB. Past MAX_ENTRY this
+// refuses with a sentence instead of risking the memory of a 2 GB device.
+const MAX_ENTRY = 64 * 1024 * 1024;
+
 const baseName = (file) => path.basename(file).replace(/\.zip$/i, '').replace(/[\u0000-\u001f]/g, '').trim().slice(0, 80) || 'pack';
 
 // What the panel shows before anything is written: how many, how big, where it
@@ -240,20 +253,6 @@ function uniquePath(dir, name) {
   return target;
 }
 
-const crcCheck = (expected) => {
-  let crc = 0;
-  return new Transform({
-    transform(chunk, _enc, cb) {
-      crc = crc32(chunk, crc);
-      cb(null, chunk);
-    },
-    flush(cb) {
-      if (crc !== expected) return cb(new Error('a file in that zip is damaged'));
-      cb();
-    }
-  });
-};
-
 // Extracts into a scratch folder inside the destination's own filesystem and then
 // moves the result into place. A pack is many files, and a half-unpacked folder
 // appearing in the MPC's library under the real name is worse than nothing: the
@@ -267,6 +266,8 @@ async function unpack(file, onProgress = () => {}) {
   fs.mkdirSync(scratch, { recursive: true });
   let done = 0;
   let written = 0;
+  // One descriptor for the whole archive.
+  const fd = fs.openSync(file, 'r');
   try {
     for (const e of files) {
       const out = path.join(scratch, e.name);
@@ -274,31 +275,38 @@ async function unpack(file, onProgress = () => {}) {
       if (rel.startsWith('..') || path.isAbsolute(rel)) {
         throw new Error(`that zip is not safe to unpack ("${e.name}")`);
       }
+      if (e.usize > MAX_ENTRY) {
+        throw new Error(`"${e.name}" is ${(e.usize / 1048576).toFixed(0)} MB unpacked, too big to open on the MPC in one go`);
+      }
       fs.mkdirSync(path.dirname(out), { recursive: true });
 
-      const fd = fs.openSync(file, 'r');
-      try {
-        const lh = readAt(fd, e.offset, 30);
-        if (lh.length !== 30 || lh.readUInt32LE(0) !== SIG_LOCAL) {
-          throw new Error(`that zip is damaged at "${e.name}"`);
-        }
-        // The local header's own name and extra lengths are what say where the
-        // data starts; the version in the directory can legally differ.
-        const dataAt = e.offset + 30 + lh.readUInt16LE(26) + lh.readUInt16LE(28);
-        const rs = fs.createReadStream(file, {
-          fd, start: dataAt, end: dataAt + e.csize - 1, autoClose: false
-        });
-        const body = e.method === 8 ? zlib.createInflateRaw() : new PassThrough();
-        await pipeline(rs, body, crcCheck(e.crc), fs.createWriteStream(out));
-      } catch (err) {
-        try { fs.unlinkSync(out); } catch (_) {}
-        throw err;
-      } finally {
-        fs.closeSync(fd);
+      const lh = readAt(fd, e.offset, 30);
+      if (lh.length !== 30 || lh.readUInt32LE(0) !== SIG_LOCAL) {
+        throw new Error(`that zip is damaged at "${e.name}"`);
       }
+      // The local header's own name and extra lengths are what say where the
+      // data starts; the version in the directory can legally differ.
+      const dataAt = e.offset + 30 + lh.readUInt16LE(26) + lh.readUInt16LE(28);
+      const comp = readAt(fd, dataAt, e.csize);
+      if (comp.length !== e.csize) throw new Error(`that zip is cut short at "${e.name}"`);
+      let raw;
+      try {
+        raw = e.method === 8 ? zlib.inflateRawSync(comp) : comp;
+      } catch (_) {
+        throw new Error(`"${e.name}" in that zip is damaged`);
+      }
+      // inflate alone does not notice a flipped bit in a stored entry, so the
+      // size and the CRC are what say the bytes are the ones the archive meant.
+      if (raw.length !== e.usize) throw new Error(`"${e.name}" came out the wrong size`);
+      if (crc32(raw, 0) !== (e.crc >>> 0)) throw new Error(`"${e.name}" in that zip is damaged`);
+      fs.writeFileSync(out, raw);
+
       done++;
       written += e.usize;
       onProgress({ done, count, written, bytes });
+      // The panel polls the status route every 1.2 s and nothing else here ever
+      // gives the event loop a turn.
+      if (done % 8 === 0) await new Promise((r) => setImmediate(r));
     }
 
     // Folder entries exist only as names; a pack with an empty folder in it
@@ -311,6 +319,7 @@ async function unpack(file, onProgress = () => {}) {
     fs.renameSync(landed, dest);
     return { dest: path.basename(dest), dir: dest, count, bytes };
   } finally {
+    try { fs.closeSync(fd); } catch (_) {}
     try { fs.rmSync(scratch, { recursive: true, force: true }); } catch (_) {}
   }
 }

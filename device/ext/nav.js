@@ -104,6 +104,48 @@
       }
       .bar button.rec.on { background: linear-gradient(#8d1f33, #6d1526); border-color: #c2384f; }
 
+      /* Keyboard glyph on the bar. U+2328 is missing from DejaVu, so it is drawn. */
+      .bar button.kbd svg { width: 30px; height: 30px; display: block; }
+      .bar button.kbd.on { color: #06110f; background: linear-gradient(#00c8b4, #0a8f83); border-color: #0a6f64; }
+      .bar button.kbd.on svg rect { stroke: #06110f; }
+
+      /* ---- on-screen keyboard ------------------------------------------------
+         A 7" panel has no keyboard, and the chroot's Chromium ships no
+         virtual-keyboard extension, so the ChromeOS OSK switch has nothing to
+         switch on. This is the replacement: the same slab as the bar, sitting on
+         top of it so the page above stays readable. */
+      .osk {
+        /* Fixed width on purpose. A max-width of calc(100vw - 24px) was here for a
+           narrower screen and was the only way this could ever shrink; every MPC One
+           is 1280x800 and the bar itself is 820 wide, so 780 always fits. */
+        width: 780px; margin: 0 0 10px auto;
+        background: #1a1f28; border: 1px solid #5a6478; border-radius: 5px;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.10), 0 12px 34px rgba(0, 0, 0, 0.7);
+        overflow: hidden;
+      }
+      .osk .ohead {
+        display: flex; align-items: center; gap: 6px; padding: 5px 7px 5px 11px;
+        background: linear-gradient(#39414f, #2a303c); border-bottom: 1px solid #12161e;
+        color: #a9b6cb; font: 700 10.5px "DejaVu Sans", sans-serif; letter-spacing: 1.6px;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.10);
+      }
+      .osk .ohead .sp { flex: 1; }
+      .osk .ohead .where {
+        color: #6f7d93; letter-spacing: 0.4px; max-width: 200px;
+        overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      }
+      .osk .ohead button {
+        width: auto; height: 28px; padding: 0 9px;
+        font: 700 10px/1 "DejaVu Sans", sans-serif; letter-spacing: 1px;
+      }
+      .osk .ohead button.x { color: #ffd9e0; border-color: #5e2635; background: linear-gradient(#3d1a24, #28111b); }
+      .osk .rows { display: flex; flex-direction: column; gap: 5px; padding: 7px; background: #151a22; }
+      .osk .kr { display: flex; gap: 5px; }
+      .osk .kr button { flex: 1 1 0; height: 42px; min-width: 0; font: 700 19px "DejaVu Sans", sans-serif; }
+      .osk .kr button.mod { font: 700 11.5px "DejaVu Sans", sans-serif; letter-spacing: 0.8px; color: #bfe9e3; }
+      .osk .kr button.on { color: #06110f; background: linear-gradient(#00c8b4, #0a8f83); border-color: #0a6f64; }
+      .osk .kr button.enter { color: #d8fffa; background: linear-gradient(#0f8d7f, #0a6b61); border-color: #0a6f64; }
+
       .toast {
         position: absolute; right: 0; bottom: 100%; margin-bottom: 10px;
         background: #20252f; border: 1px solid #5a6478; border-radius: 4px;
@@ -253,6 +295,19 @@
           </div>
         </div>
       </div>
+      <div class="osk" hidden>
+        <div class="ohead">
+          <span>KEYBOARD</span><span class="where"></span><span class="sp"></span>
+          <button data-k="esc">ESC</button>
+          <button data-k="tab">TAB</button>
+          <button data-k="left">&#8592;</button>
+          <button data-k="right">&#8594;</button>
+          <button data-k="up">&#8593;</button>
+          <button data-k="down">&#8595;</button>
+          <button data-k="hide" class="x">&#10005;</button>
+        </div>
+        <div class="rows"></div>
+      </div>
       <div class="bar">
         <button data-act="home" class="plate" title="CrateSurf by SPS - start page">
           <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -268,6 +323,19 @@
         <button data-act="reload" title="Reload">&#8635;</button>
         <button data-act="home" class="home" title="Start page">&#8962;</button>
         <button data-act="dl" title="Downloads">&#10515;<span class="badge" hidden></span></button>
+        <button data-act="kbd" class="kbd" title="Keyboard">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <rect x="2.2" y="6.4" width="19.6" height="11.6" rx="1.8" fill="#101a22"
+                  stroke="#8fa4c4" stroke-width="1.4"/>
+            <g fill="#8fa4c4">
+              <rect x="4.6" y="9" width="2.4" height="2.2" rx="0.4"/>
+              <rect x="8.2" y="9" width="2.4" height="2.2" rx="0.4"/>
+              <rect x="11.8" y="9" width="2.4" height="2.2" rx="0.4"/>
+              <rect x="15.4" y="9" width="2.4" height="2.2" rx="0.4"/>
+              <rect x="6" y="12.8" width="12" height="2.2" rx="0.4"/>
+            </g>
+          </svg>
+        </button>
         <button data-act="rec" class="rec" title="Record what is playing"><span class="meter"></span><span class="lbl">REC</span></button>
         <button data-act="exit" class="exit" title="Back to the MPC">MPC</button>
         <button data-act="hide" title="Hide">&#215;</button>
@@ -333,6 +401,9 @@
     bar.hidden = on;
     tab.hidden = !on;
     panel.hidden = on ? true : panel.dataset.open !== '1';
+    // The keyboard is anchored to the bar, so it goes with it rather than hanging
+    // over the page with nothing to close it.
+    if (on) hideOsk();
     try { localStorage.setItem(COLLAPSE_KEY, on ? '1' : '0'); } catch (_) {}
   };
 
@@ -845,6 +916,7 @@
     else if (act === 'home') location.assign(HOME);
     else if (act === 'exit') location.assign(EXIT);
     else if (act === 'dl') (panel.dataset.open === '1' ? closePanel() : openPanel());
+    else if (act === 'kbd') (osk.hidden ? showOsk(false) : hideOsk());
     else if (act === 'rec') toggleRec();
     else if (act === 'dlcancel') dlAction('dl-cancel', btn);
     else if (act === 'dlretry') dlAction('dl-retry', btn);
@@ -870,6 +942,351 @@
       if (e.target.closest('button')) { e.stopPropagation(); }
     }, true);
   });
+
+  // ---- on-screen keyboard -------------------------------------------------
+  // It types into the page, which is where every text box on these sites lives. It
+  // does not reach the PDF viewer or a cross-origin iframe (this script only runs in
+  // the top frame), and it says so rather than pretending otherwise.
+  const osk = $('.osk');
+  const oskRows = $('.osk .rows');
+  const oskWhere = $('.osk .where');
+  const kbdBtn = $('.kbd');
+
+  // Rows of keys. A string is a character to type; an object is one of the
+  // modifiers below. w is how many character-widths the key takes.
+  //
+  // The three letter rows are the real thing, in full: q..p, a..l, z..m. A first cut
+  // ended the alphabet at `l`, and nothing looked wrong until `freesound.org` came out
+  // `treesouhd.org` on the glass.
+  const LAYOUT = {
+    abc: [
+      ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0', { k: 'bksp', l: 'DEL', w: 1.5 }],
+      ['q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p'],
+      [{ k: 'shift', l: 'SHIFT', w: 1.6 }, 'a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', "'"],
+      [{ k: 'shift', l: 'SHIFT', w: 1.6 }, 'z', 'x', 'c', 'v', 'b', 'n', 'm', ',', '.'],
+      [{ k: 'pg', l: '123', w: 1.4 }, { k: 'ctrl', l: 'CTRL', w: 1.4 },
+       { k: 'space', l: 'SPACE', w: 4 }, { k: 'enter', l: 'ENTER', w: 1.8 }]
+    ],
+    sym: [
+      ['!', '@', '#', '$', '%', '&', '*', '(', ')', '_', { k: 'bksp', l: 'DEL', w: 1.5 }],
+      ['-', '+', '=', '[', ']', '{', '}', '\\', '|', '/'],
+      [{ k: 'shift', l: 'SHIFT', w: 1.6 }, ';', ':', '"', '~', '`', '<', '>', '^', '?'],
+      [{ k: 'shift', l: 'SHIFT', w: 1.6 }, ',', '.', '/', "'", '\u00a3', '\u20ac', '\u00b0', '\u00a9', '\u2022'],
+      [{ k: 'pg', l: 'ABC', w: 1.4 }, { k: 'ctrl', l: 'CTRL', w: 1.4 },
+       { k: 'space', l: 'SPACE', w: 4 }, { k: 'enter', l: 'ENTER', w: 1.8 }]
+    ]
+  };
+
+  let field = null;       // the page field the keys go into
+  let shift = false;      // one-shot, like a phone keyboard
+  let ctrl = false;
+  let sym = false;
+  let oskManual = false;  // opened from the bar button rather than by tapping a box
+  let lastKeyAt = 0;
+  let lastTapAt = 0;
+
+  const editable = (el) => {
+    if (!el || el.nodeType !== 1) return false;
+    if (el.isContentEditable) return true;
+    if (el.tagName === 'TEXTAREA') return true;
+    if (el.tagName !== 'INPUT') return false;
+    return !/^(checkbox|radio|button|submit|reset|range|color|file|image|hidden|date|time)$/i
+      .test(el.type || 'text');
+  };
+
+  // activeElement is the truth while it lasts; after a tap on the bar the field has
+  // normally already been remembered, so a key pressed in that gap still lands in
+  // the box the person was typing in instead of nowhere.
+  const fieldOf = () => {
+    const a = document.activeElement;
+    if (editable(a)) { field = a; return a; }
+    if (field && field.isConnected) return field;
+    field = null;
+    return null;
+  };
+
+  const paint = () => {
+    const rows = sym ? LAYOUT.sym : LAYOUT.abc;
+    oskRows.innerHTML = rows.map((row) => '<div class="kr">' + row.map((it) => {
+      if (typeof it === 'string') {
+        const c = shift && /[a-z]/.test(it) ? it.toUpperCase() : it;
+        return '<button data-k="ch" data-c="' + esc(c) + '" style="flex:1 1 0">' +
+               esc(c) + '</button>';
+      }
+      const on = (it.k === 'shift' && shift) || (it.k === 'ctrl' && ctrl);
+      return '<button data-k="' + it.k + '" class="mod' +
+             (it.k === 'enter' ? ' enter' : '') + (on ? ' on' : '') +
+             '" style="flex:' + (it.w || 1) + ' 1 0">' + esc(it.l) + '</button>';
+    }).join('') + '</div>').join('');
+    kbdBtn.classList.toggle('on', !osk.hidden);
+  };
+
+  const where = () => {
+    const el = fieldOf();
+    oskWhere.textContent = el
+      ? (el.placeholder || el.getAttribute('aria-label') || el.name ||
+         (el.tagName === 'TEXTAREA' ? 'text area' : 'text box'))
+      : 'tap a text box';
+  };
+
+  const hideOsk = () => {
+    if (osk.hidden) return;
+    osk.hidden = true;
+    oskManual = false;
+    paint();
+  };
+
+  // The keyboard takes the bottom of the screen, so a box behind it is a box whose
+  // text cannot be read while it is being typed. Scroll the page instead.
+  const nudge = () => {
+    const el = fieldOf();
+    if (!el || !el.getBoundingClientRect) return;
+    const r = el.getBoundingClientRect();
+    const top = osk.getBoundingClientRect().top;
+    if (r.bottom > top - 8) {
+      try { window.scrollBy({ top: r.bottom - top + 24, behavior: 'smooth' }); } catch (_) {}
+    }
+  };
+
+  const showOsk = (auto) => {
+    if (!auto) oskManual = true;
+    if (!osk.hidden) { where(); return; }
+    closePanel();      // two windows fighting over one corner
+    osk.hidden = false;
+    paint();
+    where();
+    requestAnimationFrame(nudge);
+  };
+
+  // ---- what the keys actually do -------------------------------------------
+  const insert = (text) => {
+    const el = fieldOf();
+    if (!el) return false;
+    if (document.activeElement !== el) el.focus();
+    try { if (document.execCommand('insertText', false, text)) return true; } catch (_) {}
+    // A field that refuses execCommand still has a value and a selection, so the text
+    // is written there and the page is told: a value changed without an input event
+    // is invisible to everything listening for one.
+    if (el.isContentEditable) {
+      const sel = window.getSelection();
+      if (sel && sel.rangeCount) {
+        sel.deleteFromDocument();
+        const r = sel.getRangeAt(0);
+        const node = document.createTextNode(text);
+        r.insertNode(node);
+        r.setStartAfter(node);
+        r.collapse(true);
+        sel.removeAllRanges();
+        sel.addRange(r);
+      }
+    } else {
+      let s = null, e = null;
+      try { s = el.selectionStart; e = el.selectionEnd; } catch (_) {}
+      if (s == null) el.value = (el.value || '') + text;
+      else el.setRangeText(text, s, e, 'end');
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+    return true;
+  };
+
+  const backspace = () => {
+    const el = fieldOf();
+    if (!el) return;
+    if (document.activeElement !== el) el.focus();
+    if (el.isContentEditable) {
+      const sel = window.getSelection();
+      if (sel && !sel.isCollapsed) { sel.deleteFromDocument(); return; }
+      // Stretch the caret back one character and cut the selection, rather than
+      // trusting execCommand('delete') to guess which way to delete.
+      if (sel && sel.modify) {
+        sel.modify('extend', 'backward', 'character');
+        if (!sel.isCollapsed) { sel.deleteFromDocument(); return; }
+      }
+      document.execCommand('delete', false);
+      return;
+    }
+    let s = null, e = null;
+    try { s = el.selectionStart; e = el.selectionEnd; } catch (_) {}
+    if (s == null) {
+      el.value = (el.value || '').slice(0, -1);
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+      return;
+    }
+    if (s === 0 && e === 0) return;
+    el.setRangeText('', s === e ? s - 1 : s, e, 'end');
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+  };
+
+  const KEYS = {
+    Enter: [13, 'Enter', 'Enter'],
+    Tab: [9, 'Tab', 'Tab'],
+    Escape: [27, 'Escape', 'Escape'],
+    ArrowLeft: [37, 'ArrowLeft', 'ArrowLeft'],
+    ArrowUp: [38, 'ArrowUp', 'ArrowUp'],
+    ArrowRight: [39, 'ArrowRight', 'ArrowRight'],
+    ArrowDown: [40, 'ArrowDown', 'ArrowDown']
+  };
+
+  // An untrusted key event has no default action, so the event goes to the page
+  // first (anything that listens for Enter on a search box gets it) and the default
+  // is then replayed by hand only if the page did not take the event.
+  const sendKey = (name) => {
+    const el = fieldOf();
+    if (el) el.focus();
+    const t = el || document.activeElement || document.body;
+    const [code, key, codeName] = KEYS[name];
+    const ev = new KeyboardEvent('keydown', {
+      key, code: codeName, bubbles: true, cancelable: true, ctrlKey: ctrl, shiftKey: shift
+    });
+    Object.defineProperty(ev, 'keyCode', { get: () => code });
+    Object.defineProperty(ev, 'which', { get: () => code });
+    if (ctrl) { ctrl = false; paint(); }
+    if (!t.dispatchEvent(ev)) return;
+    if (name === 'Enter') submitField();
+    else if (name === 'Tab') tabMove();
+    else moveCaret(name);
+  };
+
+  // Enter in a single-line box belongs to the form around it.
+  const submitField = () => {
+    const el = fieldOf();
+    if (!el || el.isContentEditable || el.tagName === 'TEXTAREA') return;
+    const form = el.form;
+    if (!form) return;
+    try { form.requestSubmit ? form.requestSubmit() : form.submit(); } catch (_) {}
+  };
+
+  // Synthetic Tab moves nothing either, so the walk is done here and it wraps.
+  const tabMove = () => {
+    const list = [...document.querySelectorAll('a[href],button,input,select,textarea,[tabindex]')]
+      .filter((el) => !el.disabled && el.tabIndex >= 0 && el.getClientRects().length);
+    if (!list.length) return;
+    const at = list.indexOf(document.activeElement);
+    const next = list[(at + 1 + list.length) % list.length];
+    if (next) next.focus();
+  };
+
+  const moveCaret = (name) => {
+    const el = fieldOf();
+    if (!el || el.isContentEditable) return;
+    let s, e, v;
+    try { s = el.selectionStart; e = el.selectionEnd; v = el.value || ''; } catch (_) { return; }
+    if (s == null) return;
+    let n = s;
+    if (name === 'ArrowLeft') n = Math.max(0, s - 1);
+    else if (name === 'ArrowRight') n = Math.min(v.length, e + 1);
+    else if (name === 'ArrowUp' || name === 'ArrowDown') {
+      // A line up or down with the column kept is what the key means in a textarea,
+      // where arrow keys are worth having at all.
+      const start = v.lastIndexOf('\n', s - 1) + 1;
+      const col = s - start;
+      if (name === 'ArrowUp') {
+        if (start === 0) return;
+        const prev = v.lastIndexOf('\n', start - 2) + 1;
+        n = Math.min(start - 1, prev + col);
+      } else {
+        const end = v.indexOf('\n', s);
+        if (end < 0) return;
+        const next = v.indexOf('\n', end + 1);
+        n = Math.min(next < 0 ? v.length : next, end + 1 + col);
+      }
+    }
+    try { el.setSelectionRange(n, n); } catch (_) {}
+  };
+
+  const COMBOS = { a: 'selectAll', c: 'copy', x: 'cut', z: 'undo' };
+  const sendCtrl = (c) => {
+    const el = fieldOf();
+    if (el) el.focus();
+    const t = el || document.activeElement || document.body;
+    const up = c.toUpperCase();
+    const ev = new KeyboardEvent('keydown', {
+      key: c, code: 'Key' + up, bubbles: true, cancelable: true, ctrlKey: true
+    });
+    Object.defineProperty(ev, 'keyCode', { get: () => up.charCodeAt(0) });
+    if (!t.dispatchEvent(ev)) return;
+    if (COMBOS[c]) { try { document.execCommand(COMBOS[c], false); } catch (_) {} }
+  };
+
+  const typeChar = (c) => {
+    lastKeyAt = performance.now();
+    if (ctrl) { sendCtrl(c); ctrl = false; paint(); return; }
+    if (!insert(c)) {
+      say('tap a text box first');
+      if (shift) { shift = false; paint(); }
+      return;
+    }
+    if (shift) { shift = false; paint(); }
+  };
+
+  const press = (k, btn) => {
+    lastKeyAt = performance.now();
+    switch (k) {
+      case 'ch': typeChar(btn.dataset.c); break;
+      case 'space': typeChar(' '); break;
+      case 'shift': shift = !shift; paint(); break;
+      case 'ctrl': ctrl = !ctrl; paint(); break;
+      case 'pg': sym = !sym; shift = false; paint(); break;
+      case 'bksp': backspace(); break;
+      case 'enter': {
+        const el = fieldOf();
+        if (el && (el.isContentEditable || el.tagName === 'TEXTAREA')) insert('\n');
+        else sendKey('Enter');
+        break;
+      }
+      case 'tab': sendKey('Tab'); break;
+      case 'esc': sendKey('Escape'); break;
+      case 'left': sendKey('ArrowLeft'); break;
+      case 'right': sendKey('ArrowRight'); break;
+      case 'up': sendKey('ArrowUp'); break;
+      case 'down': sendKey('ArrowDown'); break;
+      case 'hide': hideOsk(); break;
+    }
+  };
+
+  // Every key is handled on pointerdown, not click. Preventing the default there is
+  // what keeps the caret in the page's text box: a <button> would otherwise take
+  // focus on mousedown and the field would be gone by the time the key was sent.
+  root.addEventListener('pointerdown', (e) => {
+    const btn = e.target.closest('[data-k]');
+    if (!btn) return;
+    e.preventDefault();
+    e.stopPropagation();
+    press(btn.dataset.k, btn);
+  }, true);
+
+  // A field that grabs focus by itself (autofocus, a site's script) must not open the
+  // keyboard on someone who did not ask for it, so the auto-open only follows a tap
+  // that happened just before it.
+  document.addEventListener('pointerdown', (e) => {
+    const p = e.composedPath ? e.composedPath() : [e.target];
+    if (!p.includes(host)) lastTapAt = performance.now();
+  }, true);
+
+  document.addEventListener('focusin', (e) => {
+    if (!editable(e.target)) return;
+    field = e.target;
+    if (performance.now() - lastTapAt > 1200) return;
+    showOsk(true);
+  }, true);
+
+  document.addEventListener('focusout', (e) => {
+    if (e.target !== field) return;
+    setTimeout(() => {
+      if (performance.now() - lastKeyAt < 500) return;   // a tap on our own keys
+      if (editable(document.activeElement)) return;
+      if (oskManual) return;
+      hideOsk();
+    }, 200);
+  }, true);
+
+  // A real keyboard types past this thing. When one does, the on-screen one gets out
+  // of the way instead of sitting there in the corner of the screen.
+  document.addEventListener('keydown', (e) => {
+    if (!e.isTrusted || osk.hidden) return;
+    if (/^(Shift|Control|Alt|Meta|CapsLock)$/.test(e.key)) return;
+    hideOsk();
+  }, true);
 
   setCollapsed(collapsed());
   document.documentElement.appendChild(host);

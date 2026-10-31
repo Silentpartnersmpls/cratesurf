@@ -44,6 +44,21 @@ The project is alpha: expect the feature list below to move faster than the vers
 
 ### Added
 
+- **A keyboard for the glass.** The panel has no keyboard and this Chromium build ships no
+  virtual-keyboard extension (`usr/lib/chromium/extensions` is empty), so the OSK switch bought
+  nothing and every text box on every site was unusable - searching Freesound, logging in, naming a
+  file. The bar carries a keyboard key (extension 1.6.0) and a panel of its own above it: number row,
+  three full letter rows, Shift, Backspace, Enter, Space, a symbols page, and Esc / Tab / arrows in
+  the title strip. It opens by itself when a text box is tapped, and never on a page's own autofocus,
+  so an empty search box cannot pop it up unbidden. It goes away on a tap elsewhere, on navigation,
+  and the instant a real keyboard types. Keys go in as `insertText`, with `setRangeText` for a field
+  that refuses it; Enter, Tab, Esc and the arrows are dispatched as real key events, so a site's own
+  search box answers them. Verified on the unit with no keyboard attached: typed into the start
+  page's LOCATION field through the symbols page and back, submitted its form with ENTER, then ran a
+  real search on Freesound by sending it Enter (17,002 results), and closed itself when a key arrived
+  from the virtual HID keyboard. The first build stopped its letter rows at `l` and produced
+  `treesouhd.org` for `freesound.org` - caught by reading the text back off the screen, not by any
+  of the reasoning before it.
 - **A one-step installer for Windows, macOS and Linux.** One binary, its own SSH client, no runtime to
   install first: run it, type the MPC's IP, press Enter. It probes the device and refuses anything it
   does not recognise, verifies and streams the ~315 MB payload into `/data/browser`, seeds the
@@ -83,6 +98,21 @@ The project is alpha: expect the feature list below to move faster than the vers
 
 ### Fixed
 
+- **An unpack could sit at `unpacking 0 of 156` for ever, with no error and no way back.** The row
+  stayed on the zip, the counter never moved, and pressing **UNPACK** again joined the same dead job:
+  the extract hung inside its own process, before the first file was written, with only the archive's
+  descriptor open. Nothing in the stream path explained it, and the identical call finished the
+  identical pack in a fresh process, so the pipeline was replaced instead of guessed at:
+  `device/bin/unpack.js` now reads each entry's compressed bytes positionally with `readSync`,
+  inflates them with `zlib.inflateRawSync` on the calling thread, checks the size and the CRC, and
+  writes the file, with **one** descriptor for the whole archive and a yield every 8 files so the
+  panel's progress poll is still answered. There is no stream, no thread-pool thread and no deadlock
+  surface left, and it is faster for it. Behind it, a watchdog: a job whose progress has not moved in
+  45 s is marked failed with *"it stopped making progress"*, so the next thing that stalls costs 45
+  seconds and an honest message instead of lying at 0 % for ever, and the row offers **UNPACK**
+  again. Measured on the unit with a real pack: 156 files, 530 MB, unpacked into `MPC Documents/
+  Samples` in 87 s with the counter moving the whole way, every CRC checked, scratch folder gone and
+  the zip untouched; pressing it a second time made `… 2` beside the first.
 - **A release payload had no start page, no nav bar and no `weston.ini`.** `deploy.sh` copies
   `device/ext`, the four `.html` pages and `device/weston.ini` into the chroot by hand, so a unit
   that had been deployed to was fine and a payload built from a `build-sysroot.sh` tree was not: the

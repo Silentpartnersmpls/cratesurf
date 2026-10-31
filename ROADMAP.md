@@ -69,21 +69,27 @@ sees a browser.
 
 ## Planned: input
 
-Right now the browser is driven by the touchscreen, a USB keyboard plugged into the MPC, or (on
-the MPC Live II, at least) a Bluetooth mouse. Typing a search or a URL on the glass is the part that
-hurts most.
+Right now the browser is driven by the touchscreen, an on-screen keyboard on the glass, a USB
+keyboard plugged into the MPC, or (on the MPC Live II, at least) a Bluetooth mouse.
 
+- **An on-screen keyboard. Done.** The bar carries a keyboard key, and a panel rises above the bar
+  with a number row, three full letter rows, Shift, Backspace, Enter, Space, a symbols page and
+  Esc/Tab/arrows in its title strip. It also comes up by itself when a text box is tapped - never on
+  a page's own autofocus - and stands down on a tap elsewhere, on a navigation, or the moment a real
+  keyboard types. It keys into the page (`insertText`, with `setRangeText` behind it) and sends real
+  Enter, Tab, Esc and arrow key events, so a site's own search box answers them. It lives in
+  `device/ext/nav.js` with the rest of the bar: kiosk Chromium ships no virtual-keyboard extension,
+  so there was nothing to switch on and this is ours. Verified on the unit with no keyboard attached.
+  Not covered: the PDF viewer, a cross-origin iframe, and paste - all three are in
+  [KNOWN-ISSUES.md](KNOWN-ISSUES.md).
 - **Bluetooth mouse support. Works.** Confirmed by a tester on an MPC Live II: a paired Bluetooth
   mouse points and clicks in the browser with nothing added. Not yet tried on the One+.
 - **Bluetooth keyboard support. Next.** On the same Live II a Bluetooth keyboard does not work in
-  the browser yet. This is the next thing being worked on. Until then, a USB keyboard plugged into
-  the MPC does work.
-
-Queued, not started:
-
-- **An on-screen keyboard.** A keyboard on the panel itself, so a search box or the address field
-  can be filled in with nothing plugged in. Kiosk Chromium shows none, and weston does not supply
-  one on its own.
+  the browser yet. This is the next thing being worked on. On the One+, a paired Bluetooth keyboard
+  does register as an HID input node that weston opens like a USB one, which is a reason to think it
+  will land once pairing is done from the MPC's own Bluetooth screen - the unit has no
+  `bluetoothctl` or `btmgmt` to pair with from a shell, and that is the part still open. Until then,
+  a USB keyboard plugged into the MPC does work.
 
 ## Later
 

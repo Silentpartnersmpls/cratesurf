@@ -189,12 +189,16 @@ A finished `.zip` gets an **UNPACK** button and the pack lands in the sample fol
 MPC can read. Inside a zip it handles stored and deflate entries, which is what sample packs are.
 Refused before anything is written, with the reason on the row: a password, a compression method
 zlib does not have (PPMd, LZMA, bzip2 inside a zip), a multi-disk archive, an entry name that would
-write outside the folder, and a pack bigger than the free space. There is no tar, gzip or rar.
+write outside the folder, a single file over 64 MB unpacked (an All Samples folder or a whole pack
+zipped as one member would need more memory than a 2 GB unit should give away), and a pack bigger
+than the free space. There is no tar, gzip or rar.
 
 The unpack runs on the device's own CPU, one file at a time: a 700 MB pack is minutes, not seconds,
-and the row's counter is the only progress there is. Member names are read as UTF-8 whatever the
-archive's flag says, so a pack made by an old Windows tool with non-ASCII names may unpack them as
-mojibake.
+and the row's counter is the only progress there is. A job that has not finished a file in 45 s is
+marked failed rather than left saying `unpacking` - that is a watchdog, not a diagnosis, so a pack
+that really does take longer per file than that would be reported as failed. Member names are read
+as UTF-8 whatever the archive's flag says, so a pack made by an old Windows tool with non-ASCII
+names may unpack them as mojibake.
 
 ### [MED] Some downloads will simply be refused
 Chromium blocks downloads from `file://` pages, and blocks `.zip`-style downloads served over
@@ -205,6 +209,29 @@ it.
 The tested unit has 2 GB of RAM and reported about 1.3 GB available at idle, so there is headroom,
 but nobody has run it for an hour on heavy pages. If it dies, `/data/browser/run/chrome.out` and
 the journal will say whether it was the OOM killer.
+
+### [LOW] The on-screen keyboard types into the page, so not everywhere
+It reaches every text box on a page, which is what the sites this browses are made of. It does not
+reach the PDF viewer's own find box, and not a form inside a cross-origin iframe, because the bar
+runs in the top frame only. There is no paste: `Ctrl` gives you select-all, copy and cut, and
+`Ctrl+V` would need the clipboard permission this deliberately does not ask for. Keys go in as
+`insertText` with a `setRangeText` fallback, so a page that watches `keydown` for ordinary letters
+(rare, but they exist) sees nothing - only Enter, Tab, Esc and the arrows are dispatched as events.
+
+### [LOW] A Bluetooth keyboard is paired on the MPC, not from here
+Bluetooth on this unit belongs to Akai's own stack; the root shell has `btmon` and no `bluetoothctl`
+or `btmgmt`, so there is nothing to pair with from a terminal. Pair the keyboard from the MPC's
+Bluetooth screen, then come back into browse mode: it appears as an ordinary HID input node,
+libinput decodes it, and it types into the browser exactly like the USB keyboard that is already
+proven - including making the on-screen keyboard stand down. `device/keys.html` shows whether events
+are arriving at all, and `/proc/bus/input/devices` on the unit says which node they are coming from.
+
+### [LOW] An unpack job is remembered in memory only
+The panel's per-file job state - running, done, and the **DELETE ZIP** offer that only follows a
+finished unpack - lives in the control server's memory. A service restart or a reboot forgets it, so
+a zip that is already out offers **UNPACK** again. Pressing it a second time is harmless: it makes a
+`… 2` folder rather than overwriting the first. It does cost the space of a second copy, and the
+files on disk are always the truth either way.
 
 ### [LOW] The browser profile is disposable
 All state lives in `/data/browser/sysroot/root/chrome-profile`. A sysroot rebuild replaces it, so
@@ -256,6 +283,8 @@ unpacking and the graphical installer.
 
 - **No tabs and no omnibox.** One page at a time. The bar covers back/forward/reload/home, and the
   start page covers typed addresses.
+- **No autocorrect, no paste, no keyboard themes.** The on-screen keyboard is keys and a symbols
+  page; it has none of the conveniences a phone keyboard has.
 - **No address bar on arbitrary pages.** Typing a URL means going back to the start page or
   pressing `/` / Ctrl+L there.
 - **No hardware volume.** Card 1 exposes no ALSA mixer elements, so PulseAudio's sink level is the

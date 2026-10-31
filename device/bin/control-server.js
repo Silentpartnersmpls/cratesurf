@@ -156,7 +156,24 @@ function listDir(rel) {
 // of starting a duplicate that would unpack the same pack twice.
 const jobs = new Map();
 
-const jobOf = (rel) => jobs.get(rel) || { state: 'none' };
+// A job that has not moved a file in this long is not unpacking any more. The
+// panel asks for the job every 1.2 s and draws whatever it says, so a stuck job
+// that stayed "running" was the one thing it could not survive: it painted
+// "unpacking 0 of 156" for ever, with no error and no way back to UNPACK. The
+// fake fix (say it failed) is worse than the real one, so the extract itself was
+// rewritten too; this is the belt for the next thing that stalls.
+const STALL_MS = 45000;
+
+const jobOf = (rel) => {
+  const job = jobs.get(rel);
+  if (!job) return { state: 'none' };
+  if (job.state === 'running' && Date.now() - (job.progressAt || job.started) > STALL_MS) {
+    job.state = 'failed';
+    job.error = 'it stopped making progress';
+    console.log(`unpack ${rel} -> stalled at ${job.done} of ${job.count}, marked failed`);
+  }
+  return job;
+};
 
 const startUnpack = (rel) => {
   const target = resolveInRoot(rel);
@@ -197,14 +214,18 @@ const startUnpack = (rel) => {
 
   const job = {
     state: 'running', dest: info.dest, count: info.count, bytes: info.bytes,
-    done: 0, written: 0, started: Date.now()
+    done: 0, written: 0, started: Date.now(), progressAt: Date.now()
   };
   jobs.set(rel, job);
-  console.log(`unpack ${rel} -> ${info.dest} (${info.count} files, ${bytes(info.bytes)})`);
+  // The folder is only known after the extract resolves a clash ("Pack" against
+  // "Pack 2"), so the start line reports the work and the done line reports where
+  // it landed; naming a folder here would be wrong on the second press.
+  console.log(`unpack ${rel} -> ${info.count} files, ${bytes(info.bytes)}`);
 
   unpacker.unpack(target, (p) => {
     job.done = p.done;
     job.written = p.written;
+    job.progressAt = Date.now();
   }).then((r) => {
     job.state = 'done';
     job.dest = r.dest;

@@ -37,7 +37,13 @@ const fs = require('fs');
 const { execFile } = require('child_process');
 
 const R = '/data/browser';
-const EV_SIZE = 16;
+// struct input_event: struct timeval (2 longs) + type(2)+code(2)+value(4).
+// 32-bit arm -> 8+8=16 bytes; 64-bit (arm64) -> 16+8=24. The MPC XL is arm64.
+const LONG = (process.arch === "arm64" || process.arch === "x64") ? 8 : 4;
+const EV_SIZE = LONG * 2 + 8;
+const EV_TYPE_OFF = LONG * 2;
+const EV_CODE_OFF = LONG * 2 + 2;
+const EV_VALUE_OFF = LONG * 2 + 4;
 const HOLD_MS = 2500;
 const MIN_FINGERS = 3;
 const QUIET_MS = 1200;    // the glass must be clear this long before the fingers land
@@ -214,9 +220,9 @@ function start() {
         return;
       }
       det.event(
-        buf.readUInt16LE(8),
-        buf.readUInt16LE(10),
-        buf.readInt32LE(12),
+        buf.readUInt16LE(EV_TYPE_OFF),
+        buf.readUInt16LE(EV_CODE_OFF),
+        buf.readInt32LE(EV_VALUE_OFF),
         Date.now());
       pump();
     });

@@ -23,9 +23,9 @@ SSH="ssh -o BatchMode=yes -o StrictHostKeyChecking=no"
 SCP="scp -q -o BatchMode=yes -o StrictHostKeyChecking=no"
 
 VERSION=v22.23.4
-SHA256=c9057c6a3b8fbb9651ed115c1e96d4a7281b7b9c9ca89fa05865c98ed7ffd437
+SHA256=6287aa46b6c375d816e63ae66d024fbbfd70404825aabdfdf898a970871d2f4b
 DIR=/data/browser/node
-PKG=node-$VERSION-linux-armv7l
+PKG=node-$VERSION-linux-arm64
 
 have=$($SSH "$HOST" "'$DIR/bin/node' --version 2>/dev/null || true" | tr -d '\r')
 if [ "$have" = "$VERSION" ]; then

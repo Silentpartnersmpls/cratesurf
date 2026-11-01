@@ -6,12 +6,12 @@ every page because kiosk mode has none. Dig for samples on the machine you are g
 on, instead of shuttling files across from a computer.
 
 [![status](https://img.shields.io/badge/status-0.1.2--alpha-e0243f?style=flat-square)](#read-this-first)
-[![works on](https://img.shields.io/badge/works%20on-MPC%20One%2B%20%C2%B7%20MPC%20Live%20II-00c8b4?style=flat-square)](#confirmed-working)
+[![works on](https://img.shields.io/badge/works%20on-MPC%20One%2B%20%C2%B7%20MPC%20Live%20II%20%C2%B7%20MPC%20XL-00c8b4?style=flat-square)](#confirmed-working)
 [![made with](https://img.shields.io/badge/made%20with-a%20browser%20that%20should%20already%20be%20there-1f2937?style=flat-square)](#why-turning-it-on-means-turning-the-mpc-off)
 [![licence](https://img.shields.io/badge/licence-MIT-3b82f6?style=flat-square)](LICENSE)
 [![CI](https://img.shields.io/badge/CI-needs%20the%20hardware-4b5563?style=flat-square)](#contributing)
 
-**Version 0.1.2-alpha** · MIT licensed · confirmed on the MPC One+ (Gen 1) up to firmware 3.10 and the MPC Live II up to 3.9.1
+**Version 0.1.2-alpha** · MIT licensed · confirmed on the MPC One+ (Gen 1) up to firmware 3.10, the MPC Live II up to 3.9.1, and the MPC XL
 
 ![The CrateSurf start page on the MPC panel](docs/start-page.png)
 
@@ -77,12 +77,13 @@ on launch.
 
 ## Confirmed working
 
-Two models so far, both on rooted (SSH-enabled) firmware:
+Three models so far, all on rooted (SSH-enabled) firmware:
 
 | Model | Confirmed up to firmware |
 | --- | --- |
 | **MPC One+** (Gen 1) | **3.10** (also 3.9.1 and 3.4.2.13) |
 | **MPC Live II** | **3.9.1** |
+| **MPC XL** | confirmed working (firmware version not recorded yet) |
 
 "Up to" means the newest firmware someone has actually run it on, not a limit anyone knows about.
 A newer firmware may well work; it just has not been checked yet. If you run it on a model or a
@@ -146,11 +147,12 @@ specific combination, and a device has to have all of it:
   runs from the Debian chroot the project builds. See
   [INSTALL.md](INSTALL.md#prerequisites).
 
-The MPC One+ and the MPC Live II are confirmed (see [Confirmed working](#confirmed-working)).
-Other RK3288-era MPCs (the first Live, the X) are the plausible next candidates, and they are
-plausible rather than confirmed: different panel connectors, different partition layouts and different
-firmware builds have all been seen across the range. Later MPCs on other SoCs are close to
-certainly out.
+The MPC One+, the MPC Live II and the MPC XL are confirmed (see
+[Confirmed working](#confirmed-working)). Other RK3288-era MPCs (the first Live, the X) are the
+plausible next candidates, and they are plausible rather than confirmed: different panel connectors,
+different partition layouts and different firmware builds have all been seen across the range. This
+section used to say later MPCs were close to certainly out; the XL working means that is no longer a
+safe assumption, so the probe below is the way to find out.
 
 There is a read-only probe for exactly this. Run it against your device before you touch anything:
 

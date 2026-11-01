@@ -64,6 +64,8 @@ The project is alpha: expect the feature list below to move faster than the vers
   3.10 (and on 3.9.1 and 3.4.2.13), and the MPC Live II, confirmed up to firmware 3.9.1, both on
   rooted firmware. INSTALL.md's
   prerequisites say the same, and the Live II moves out of "might work on".
+- **The MPC XL is confirmed working**, on rooted firmware. It is in the README's table, badge and
+  header and in INSTALL.md's prerequisites. Its firmware version is not recorded yet.
 - **Planned input features on the roadmap:** an on-screen keyboard and Bluetooth keyboard support.
 - **Bluetooth mouse confirmed working** on the MPC Live II, with nothing added. A **Bluetooth keyboard
   does not work yet** on the same unit; it is the next item on the roadmap and is listed in

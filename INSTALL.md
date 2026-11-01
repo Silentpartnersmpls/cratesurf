@@ -21,7 +21,7 @@ is on you.
 
 | Requirement | Why | How to check |
 | --- | --- | --- |
-| MPC One+ (Gen 1) up to firmware **3.10**, or MPC Live II up to firmware **3.9.1** | The models and firmware it is confirmed on (see [README.md](README.md#confirmed-working)); development was done on a One+ on 3.4.2.13 and 3.10.0.49 | Main menu → Preferences → Info, or `cat /usr/share/Akai/SME0/VERSION` on 3.10, or `strings /usr/bin/MPC \| grep -m1 '^3\.'` on 3.4 (the 3.10 binary carries no version string) |
+| MPC One+ (Gen 1) up to firmware **3.10**, MPC Live II up to firmware **3.9.1**, or MPC XL | The models and firmware it is confirmed on (see [README.md](README.md#confirmed-working)); development was done on a One+ on 3.4.2.13 and 3.10.0.49 | Main menu → Preferences → Info, or `cat /usr/share/Akai/SME0/VERSION` on 3.10, or `strings /usr/bin/MPC \| grep -m1 '^3\.'` on 3.4 (the 3.10 binary carries no version string) |
 | Root SSH into the MPC | Everything is installed over SSH | `ssh root@<mpc-ip> 'id -u'` prints `0` |
 | About 1 GB free on `/data` | The chroot is ~775 MB, plus a browser profile | `ssh root@<mpc-ip> df -h /data` |
 | MPC on the same LAN as your computer | `ssh`, `scp` and port 8798 | `ping <mpc-ip>` |

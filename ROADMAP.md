@@ -105,6 +105,23 @@ keyboard plugged into the MPC, a Bluetooth keyboard paired from the MPC's own Bl
   report (a paired keyboard did not type) predates this pairing route and has not been retried; a USB
   keyboard is the fallback there.
 
+## Gen 2 (MPC XL and Live III) in the main project
+
+The MPC XL already runs CrateSurf through djru5h's community port (the `mpc-xl-gen2` branch of
+their fork, see the [README](README.md#mpc-xl-and-live-iii-gen-2)). That branch is XL-only, so the
+plan is to bring it in here so one project covers both generations:
+
+- Detect the board at startup and pick the screen rotation, audio device, documents folder and
+  weston options for it, so the same scripts run on a One+, a Live II and an XL.
+- Fix the gesture and Ctrl+Alt+B reading input events at the wrong size on 64-bit (the port has the
+  fix, and it changes nothing on 32-bit).
+- Build a 64-bit payload alongside the 32-bit one, from `build-sysroot.sh` with an option rather than
+  separate copies of it.
+- Teach the installer to take a 64-bit unit: fetch the 64-bit payload and Node, and use the XL's
+  boot hook, since its system partition is locked and the current boot step cannot write to it.
+
+Waiting on a test pass on an XL before anything is released.
+
 ## Later
 
 The list in [KNOWN-ISSUES.md](KNOWN-ISSUES.md#missing-features) is the long version. The ones that

@@ -29,3 +29,9 @@ a coding agent harness.
 
 Everything in this repository was written by those two working together, including the
 parts that were wrong the first time.
+
+## Community
+
+- **djru5h** ([@djru5h](https://github.com/djru5h)): ported CrateSurf to the 64-bit MPC XL
+  (the `mpc-xl-gen2` branch of their fork), the first Gen 2 unit to run it, and added the Claude and
+  YouTube tiles to the start page.

@@ -64,8 +64,12 @@ The project is alpha: expect the feature list below to move faster than the vers
   3.10 (and on 3.9.1 and 3.4.2.13), and the MPC Live II, confirmed up to firmware 3.9.1, both on
   rooted firmware. INSTALL.md's
   prerequisites say the same, and the Live II moves out of "might work on".
-- **The MPC XL is confirmed working**, on rooted firmware. It is in the README's table, badge and
-  header and in INSTALL.md's prerequisites. Its firmware version is not recorded yet.
+- **The MPC XL runs CrateSurf, through a community port.** djru5h's `mpc-xl-gen2` branch is tested on
+  an MPC XL on firmware 3.9.1. The XL is 64-bit, so this repository's installer and payloads do not
+  support it yet; the README says so and links the port, INSTALL.md no longer lists the XL as an
+  installer target, and bringing Gen 2 into the main project is on the roadmap. (An earlier note here
+  listed the XL as an installer target without that caveat.)
+- **Claude and YouTube tiles on the start page**, from djru5h's fork.
 - **Planned input features on the roadmap:** an on-screen keyboard and Bluetooth keyboard support.
 - **Bluetooth mouse confirmed working** on the MPC Live II, with nothing added. A **Bluetooth keyboard
   does not work yet** on the same unit; it is the next item on the roadmap and is listed in

@@ -11,7 +11,7 @@ on, instead of shuttling files across from a computer.
 [![licence](https://img.shields.io/badge/licence-MIT-3b82f6?style=flat-square)](LICENSE)
 [![CI](https://img.shields.io/badge/CI-needs%20the%20hardware-4b5563?style=flat-square)](#contributing)
 
-**Version 0.1.2-alpha** · MIT licensed · confirmed on the MPC One+ (Gen 1) up to firmware 3.10, the MPC Live II up to 3.9.1, and the MPC XL
+**Version 0.1.2-alpha** · MIT licensed · confirmed on the MPC One+ (Gen 1) up to firmware 3.10, the MPC Live II up to 3.9.1, and the MPC XL on 3.9.1 through a [community port](#mpc-xl-and-live-iii-gen-2)
 
 ![The CrateSurf start page on the MPC panel](docs/start-page.png)
 
@@ -83,12 +83,31 @@ Three models so far, all on rooted (SSH-enabled) firmware:
 | --- | --- |
 | **MPC One+** (Gen 1) | **3.10** (also 3.9.1 and 3.4.2.13) |
 | **MPC Live II** | **3.9.1** |
-| **MPC XL** | confirmed working (firmware version not recorded yet) |
+| **MPC XL** | **3.9.1**, through the community port only, not the installer ([see below](#mpc-xl-and-live-iii-gen-2)) |
 
 "Up to" means the newest firmware someone has actually run it on, not a limit anyone knows about.
 A newer firmware may well work; it just has not been checked yet. If you run it on a model or a
 firmware that is not in this table, an issue saying so (good or bad, with the model and firmware
 version) is how this table grows.
+
+### MPC XL and Live III (Gen 2)
+
+The MPC XL and the MPC Live III are a newer generation of Akai hardware: a 64-bit Rockchip RK3588
+where the One+ and Live II have a 32-bit RK3288. **The installer and the release payloads here are
+32-bit only, so they do not work on an XL yet.** The installer refuses a 64-bit unit rather than
+half-installing on it.
+
+What does work today is a community port by [djru5h](https://github.com/djru5h): the
+[`mpc-xl-gen2` branch of their fork](https://github.com/djru5h/cratesurf/tree/mpc-xl-gen2), tested on
+an MPC XL (board `inmusic,acvc`) on MPC OS 3.9.1. It builds a 64-bit sysroot on Debian trixie, which
+gives the browser the XL's GPU, and it changes the screen rotation, the audio device, the documents
+folder and the way the browser starts at boot for the XL. Its own
+[MPC-XL-GEN2.md](https://github.com/djru5h/cratesurf/blob/mpc-xl-gen2/MPC-XL-GEN2.md) has the steps.
+Those changes are specific to the XL, so the branch is not for a One+ or Live II.
+
+Folding Gen 2 into this repository, so one installer covers both generations, is on the
+[roadmap](ROADMAP.md#gen-2-mpc-xl-and-live-iii-in-the-main-project). The Live III has not been
+reported on yet.
 
 ## The development unit
 

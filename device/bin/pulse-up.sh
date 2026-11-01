@@ -28,7 +28,7 @@ setsid /usr/sbin/chroot "$S" /bin/sh -c '
   exec /usr/bin/pulseaudio --system --daemonize=no --disallow-exit --exit-idle-time=-1 \
     --realtime=0 -n --log-target=file:/tmp/pulse.log \
     --load="module-native-protocol-unix auth-anonymous=1 socket=/run/pulse/native" \
-    --load="module-alsa-sink device=plughw:0,0 sink_name=codec rate=44100 channels=2 tsched=0 fragments=4 fragment_size=8192" \
+    --load="module-alsa-sink device=hw:1,0 sink_name=codec rate=48000 channels=2 tsched=0" \
     --load="module-null-sink sink_name=silent"
 ' > "$R/run/pulse.out" 2>&1 < /dev/null &
 

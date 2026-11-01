@@ -77,7 +77,7 @@ bind run/udev
 # tree is mounted now because the destination is chosen per download and written as
 # a path under this root ("Samples/pack.zip"), so anything the MPC itself shows has
 # to exist in here or the browser cannot write to it.
-DOCS="/nvme/MPC Documents"
+DOCS="/media/acvs-content/MPC Documents"
 # /proc/mounts escapes the space in that path; the plain string would never match.
 DOCS_ESC=$(printf '%s' "$DOCS" | sed 's/ /\\040/g')
 mkdir -p "$S/downloads"

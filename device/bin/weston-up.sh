@@ -28,5 +28,5 @@ setsid /usr/sbin/chroot "$S" /bin/sh -c '
   # even though the pointer still moves.
   export XCURSOR_THEME=DMZ-White XCURSOR_SIZE=32
   echo $$ > /run/weston.pid
-  exec /usr/bin/weston --tty=1 --config=/etc/xdg/weston/weston.ini --log=/tmp/weston.log $WESTON_EXTRA
+  exec /usr/bin/weston --config=/etc/xdg/weston/weston.ini --log=/tmp/weston.log $WESTON_EXTRA
 ' > "$R/run/weston.out" 2>&1 < /dev/null &

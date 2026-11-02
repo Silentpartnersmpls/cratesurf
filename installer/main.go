@@ -32,7 +32,7 @@ func main() {
 		user         = flag.String("user", "root", "SSH user on the MPC")
 		pass         = flag.String("password", "", "root password; leave empty for a unit with none")
 		payload      = flag.String("payload", "", "local payload tarball, or a URL")
-		sha          = flag.String("sha", payloadSHA256, "expected sha256 of the payload")
+		sha          = flag.String("sha", "", "expected sha256 of the payload; defaults to the one for the detected board")
 		check        = flag.Bool("check", false, "read-only probe: change nothing")
 	)
 	var acceptHost = flag.Bool("accept-host-key", false, "do not ask before trusting an unseen MPC host key (for scripted runs)")
@@ -44,9 +44,6 @@ func main() {
 	banner()
 
 	spec := *payload
-	if spec == "" {
-		spec = payloadURL
-	}
 
 	if *hardenOnly {
 		if *host == "" {
@@ -131,7 +128,7 @@ func runInstall(host, user, pass, spec, sha string, checkOnly bool) {
 	info.describe()
 
 	if checkOnly {
-		fails := verify(d)
+		fails := verify(d, info)
 		if len(fails) > 0 {
 			die(fmt.Errorf("%s", strings.Join(fails, "\n        ")))
 		}
@@ -173,12 +170,16 @@ func doInstall(d *Dev, info *Info, spec, sha string, _ bool) error {
 	}
 
 	headline("The payload")
-	p, err := OpenPayload(spec, sha)
+	payloadSpec, payloadSHA, err := payloadFor(info, spec, sha)
+	if err != nil {
+		return err
+	}
+	p, err := OpenPayload(payloadSpec, payloadSHA)
 	if err != nil {
 		return err
 	}
 	defer p.Close()
-	if !strings.HasPrefix(spec, "http") {
+	if !strings.HasPrefix(payloadSpec, "http") {
 		ok("%s (%s)", p.Path, humanBytes(p.Size))
 	}
 

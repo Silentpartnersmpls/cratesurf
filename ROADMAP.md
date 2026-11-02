@@ -5,16 +5,21 @@ so nobody has to guess whether a thing is planned or just absent.
 
 ## Rendering and scrolling, now
 
-Software raster is the default because the GPU path tears the panel, and that trade is written down
-in [the development unit](README.md#the-development-unit). The next pass is to make scrolling usable
-without tearing. The first two switches are Panfrost AFBC (`PAN_MESA_DEBUG=noafbc`, behind
-`/data/browser/run/panfrost-noafbc`) and weston's direct scanout of a fullscreen client
-(`device/bin/scanout-toggle.sh` flips it for the session); then hold GPU compositing back
-(`--disable-gpu-compositing`), keep GPU compositing but rasterise on the CPU
+On Gen 1, software raster is the default because the GPU path tears the panel, and that trade is
+written down in [the development unit](README.md#the-development-unit). The next pass is to make
+scrolling usable without tearing. The first two switches are Panfrost AFBC
+(`PAN_MESA_DEBUG=noafbc`, behind `/data/browser/run/panfrost-noafbc`) and weston's direct scanout of
+a fullscreen client (`device/bin/scanout-toggle.sh` flips it for the session); then hold GPU
+compositing back (`--disable-gpu-compositing`), keep GPU compositing but rasterise on the CPU
 (`--disable-gpu-rasterization`), and try `--use-gl=egl` and a newer Mesa. Every candidate has to be
 judged by the frames on the glass, not just the frame clock; the benchmark that endorsed the first
 GPU build measured timing and missed whole black frames and a missing nav bar. Until a configuration
 presents complete frames by hand, it stays behind `/data/browser/run/chrome-gpu-raster`.
+
+On Gen 2 the profile starts from the other side: the trixie/Mesa 25/panthor tree exists for the
+RK3588's Mali-G610, so GPU is the default there. That path still needs the same frame-content test
+on an XL; `touch /data/browser/run/chrome-software-raster` drops it back to software while that is
+worked out.
 
 ## The download side, next
 
@@ -56,18 +61,17 @@ everything around them.
 
 ## Making it installable by people who are not us
 
-This is the real reason most people close the tab. "Build an armhf chroot on a Debian box, then
-`scp` it to the MPC" is a fair description of the work and an unfair thing to ask before someone
-sees a browser.
+This is the real reason most people close the tab. "Build a Debian chroot on a PC, then `scp` it to
+the MPC" is a fair description of the work and an unfair thing to ask before someone sees a browser.
 
-- **The installer. Done.** `installer/` is one binary for Windows, macOS and Linux, with its own SSH
-  client and nothing to install first: type the MPC's IP, press Enter, and it checks the device,
-  streams the payload, installs the toggle, writes the boot copy and then verifies its own work. It
-  also walks through rooting a stock unit, which is a firmware image on a USB stick because that is
-  the only way in. The installer and its payload are published as a pre-release in
-  [GitHub Releases](https://github.com/Silentpartnersmpls/cratesurf/releases), with the payload URL
-  and checksum baked into the binaries. The source build still takes a local tarball with
-  `--payload`.
+- **The installer. Dual-payload source build done; a Gen 2 release waits on a hardware pass.**
+  `installer/` is one binary for Windows, macOS and Linux, with its own SSH client and nothing to
+  install first: type the MPC's IP, press Enter, and it checks the device, streams the matching
+  payload, installs the toggle, writes the Gen 1 boot copy or the Gen 2 addin hook, and then
+  verifies its own work. It also walks through rooting a stock unit, which is a firmware image on a
+  USB stick because that is the only way in. The released 0.1.2-alpha pre-release is Gen 1 only,
+  with its payload URL and checksum baked into the binaries; the source build here builds and
+  selects both architectures and still takes a local tarball with `--payload`.
 - **A USB stick route.** Build the sysroot on your computer, write it to a stick, plug the stick into
   the MPC, copy it into `/data`. That removes the build machine from the device's side of the job
   and makes a reinstall a stick instead of a `scp`.
@@ -108,19 +112,23 @@ keyboard plugged into the MPC, a Bluetooth keyboard paired from the MPC's own Bl
 ## Gen 2 (MPC XL and Live III) in the main project
 
 The MPC XL already runs CrateSurf through djru5h's community port (the `mpc-xl-gen2` branch of
-their fork, see the [README](README.md#mpc-xl-and-live-iii-gen-2)). That branch is XL-only, so the
-plan is to bring it in here so one project covers both generations:
+their fork, see the [README](README.md#mpc-xl-and-live-iii-gen-2)). That branch was XL-only. The
+per-board integration is now in this tree:
 
-- Detect the board at startup and pick the screen rotation, audio device, documents folder and
-  weston options for it, so the same scripts run on a One+, a Live II and an XL.
-- Fix the gesture and Ctrl+Alt+B reading input events at the wrong size on 64-bit (the port has the
-  fix, and it changes nothing on 32-bit).
-- Build a 64-bit payload alongside the 32-bit one, from `build-sysroot.sh` with an option rather than
-  separate copies of it.
-- Teach the installer to take a 64-bit unit: fetch the 64-bit payload and Node, and use the XL's
-  boot hook, since its system partition is locked and the current boot step cannot write to it.
+- [x] Detect the board at startup and pick the screen rotation, audio device, documents folder and
+  weston options for it. `device/bin/board.sh` is the shell profile, `device/bin/board.js` is the
+  Node half.
+- [x] Fix the gesture and Ctrl+Alt+B reading input events at the wrong size on 64-bit. `EV_SIZE` is
+  16 on armv7 and 24 on arm64.
+- [x] Build a 64-bit payload alongside the 32-bit one from the same `build-sysroot.sh`
+  (`ARCH=arm64 DISTRO=trixie`).
+- [x] Teach the installer to take a 64-bit unit: it detects the board generation, picks the arm64
+  payload and Node binary, and installs the Gen 2 `/data/mpc-addins` boot hook instead of the rootfs
+  unit.
 
-Waiting on a test pass on an XL before anything is released.
+**Still open:** a hardware test pass on an XL and a Live III through this integration. The XL values
+came from the community port, but this repository has only run the Gen 1 path so far. Do not treat a
+Gen 2 release as confirmed until that pass happens.
 
 ## Later
 

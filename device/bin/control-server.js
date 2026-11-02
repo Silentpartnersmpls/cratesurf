@@ -24,6 +24,7 @@ const path = require('path');
 const fs = require('fs');
 const { execFile } = require('child_process');
 const launcher = require('./touch-launcher.js');
+const board = require('./board.js');
 const { createRecorder } = require('./recorder.js');
 const unpacker = require('./unpack.js');
 const { probeLink } = require('./probe.js');
@@ -37,8 +38,9 @@ const UP = `${R}/bin/browse-up.sh`;
 const DOWN = `${R}/bin/browse-down.sh`;
 const HOME_PAGE = `${R}/sysroot/opt/home.html`;
 // Where the recorder writes takes. Still the sample folder, because that is the one
-// folder the MPC's own browser lists as a library.
-const FILES_ROOT = process.env.MPC_FILES_ROOT || '/media/acvs-content/MPC Documents/Samples';
+// folder the MPC's own browser lists as a library. board.js resolves the per-board
+// document root; an explicit environment value still wins.
+const FILES_ROOT = process.env.MPC_FILES_ROOT || board.files;
 // Everything a download may be saved into or listed from, as one root: the MPC's
 // whole document tree, bind-mounted at /downloads inside the chroot. A file's
 // folder is the path in front of its name ("Samples/pack.zip"), so one guarded
@@ -92,7 +94,7 @@ const TYPES = {
   '.jpeg': 'image/jpeg', '.gif': 'image/gif', '.svg': 'image/svg+xml'
 };
 
-const DOCS_ROOT = process.env.MPC_DOCS_ROOT || '/media/acvs-content/MPC Documents';
+const DOCS_ROOT = process.env.MPC_DOCS_ROOT || board.docs;
 
 // Where downloads go, remembered on the device rather than in the page. The bar
 // runs on whatever site is open and page storage is per origin, so a choice made on
@@ -595,6 +597,7 @@ http.createServer(async (req, res) => {
   res.end();
 }).listen(PORT, '0.0.0.0', () => {
   console.log(`mpc browse server on http://0.0.0.0:${PORT}/`);
+  console.log(`board gen${board.gen} (${board.arch}), documents at ${board.docs}`);
   // Reads /dev/input while the MPC app runs, so browse mode can be opened from
   // the MPC's own glass. If it throws, the toggle page still works: input is a
   // convenience, not the only way in.

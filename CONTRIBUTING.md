@@ -40,19 +40,25 @@ In rough order of value:
 ## The code, in one screen
 
 ```
-build-sysroot.sh              builds the armhf Debian chroot on your PC, ships it to /data
+build-sysroot.sh              builds the Debian chroot on your PC (armhf/bookworm by default,
+                              arm64/trixie with ARCH=arm64 DISTRO=trixie), ships it to /data
 deploy.sh                     copies device files to the MPC and seeds the Chromium profile
-deploy/install-service.sh     installs the 8798 toggle; --boot also writes the firmware rootfs
+deploy/install-service.sh     installs the 8798 toggle; Gen 1 unit + --boot rootfs copy, or the
+                              Gen 2 /data/mpc-addins hook, chosen by the device architecture
+deploy/node-pins.sh           pinned Node version and armv7/arm64 checksums, shared by all builders
 installer/                    the front door: Go binary for windows/mac/linux, its own SSH client,
                               a payload downloader, and the guided root flow. make-payload.sh builds
-                              the tarball, build.sh cross-compiles. See installer/README.md.
-deploy/install-rootfs-unit.sh runs ON the MPC, writes the unit into /dev/mmcblk0p6
+                              either architecture's tarball, build.sh cross-compiles. See installer/README.md.
+deploy/install-rootfs-unit.sh runs ON the MPC, writes the Gen 1 unit into /dev/mmcblk0p6
+device/mpc-gen2-hook.sh       Gen 2 boot hook, installed at /data/mpc-addins/cratesurf-browse/install.sh
 
 device/bin/browse-up.sh       enter browse mode: autosave, mounts, stop acvs, pulse, weston, chromium
 device/bin/browse-down.sh     leave browse mode: stop everything, unmount, start acvs
-device/bin/chrome-up.sh       Chromium kiosk on the weston socket (kiosk flags live here)
-device/bin/weston-up.sh       weston on DRM, discovers the wayland socket name
-device/bin/pulse-up.sh        PulseAudio --system on hw:1,0, because Chromium has no ALSA backend
+device/bin/board.sh           runtime board profile (Gen 1 RK3288 / Gen 2 RK3588); shell half
+device/bin/board.js           the same profile for control-server.js and recorder.js
+device/bin/chrome-up.sh       Chromium kiosk on the weston socket (profile picks GPU or software)
+device/bin/weston-up.sh       weston on DRM, rewrites the output transform for the board
+device/bin/pulse-up.sh        PulseAudio --system on the board's ALSA sink, because Chromium has no ALSA backend
 device/bin/fix-prefs.sh       re-injects the download prefs before every launch
 device/bin/setup-profile.sh   one-time profile seed (download folder, policies)
 device/bin/killproc.sh        the ONLY supported way to stop a program (by /proc/<pid>/comm)
@@ -67,12 +73,12 @@ device/ext/                   the Chromium extension: bar (nav.js), worker (bg.j
 device/home.html              the kiosk start page
 device/calib.html             prints touch coordinates, for checking the panel mapping
 device/keys.html              prints key events, for checking a keyboard
-device/weston.ini             connector DSI-1, rotate-90 to get 1280x800
+device/weston.ini             base config; weston-up.sh rewrites [output] for the board
 
 tools/touch3.c                synthetic multi-touch digitizer (holds N fingers, taps or swipes a point, or drags a line)
 tools/fbgrab.c                capture the KMS framebuffer as PPM, once or as a sequence
 tools/grabcheck.c             who holds each input device exclusively, plus axis ranges
-tools/probe-device.sh         read-only compatibility probe for an unknown MPC
+tools/probe-device.sh         read-only compatibility probe for Gen 1 or Gen 2
 ```
 
 The single most important architectural fact: **the MPC app holds DRM master, so it has to stop
@@ -193,7 +199,8 @@ like a different bug.
 **Panel, input and rotation**
 
 - **`transform=270` is rejected** by this weston; the accepted spellings are `rotate-90` /
-  `rotate-270`.
+  `rotate-270`. Gen 1 uses `rotate-90`, Gen 2 uses `rotate-270`; `board.sh` owns the value and
+  `weston-up.sh` writes it into the run-time copy of `weston.ini`.
 - **The wayland socket name is discovered, not assumed.** It can come up as `wayland-1` after a
   stale lock survives a crash.
 - **weston needs `/run/udev` inside the chroot**, or libinput sees no devices and the backend

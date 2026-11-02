@@ -22,7 +22,7 @@ fi
 "$R/bin/chrome-down.sh"
 "$R/bin/weston-down.sh"
 # Stop the sound server before the MPC app starts: the codec is exclusive, and
-# an acvs that cannot open hw:1,0 comes back mute.
+# an acvs that cannot open the codec comes back mute.
 "$R/bin/pulse-down.sh"
 
 # A stack started by hand lives in its own transient unit (see browse-up.sh), so

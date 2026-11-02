@@ -64,11 +64,10 @@ The project is alpha: expect the feature list below to move faster than the vers
   3.10 (and on 3.9.1 and 3.4.2.13), and the MPC Live II, confirmed up to firmware 3.9.1, both on
   rooted firmware. INSTALL.md's
   prerequisites say the same, and the Live II moves out of "might work on".
-- **The MPC XL runs CrateSurf, through a community port.** djru5h's `mpc-xl-gen2` branch is tested on
-  an MPC XL on firmware 3.9.1. The XL is 64-bit, so this repository's installer and payloads do not
-  support it yet; the README says so and links the port, INSTALL.md no longer lists the XL as an
-  installer target, and bringing Gen 2 into the main project is on the roadmap. (An earlier note here
-  listed the XL as an installer target without that caveat.)
+- **The MPC XL runs CrateSurf, through a community port.** djru5h's `mpc-xl-gen2` branch was tested
+  on an MPC XL on firmware 3.9.1, and its values are the source of the per-board Gen 2 support in
+  this tree. The README and INSTALL.md now describe both generations; the integrated path still
+  needs its own hardware pass.
 - **Claude and YouTube tiles on the start page**, from djru5h's fork.
 - **Planned input features on the roadmap:** an on-screen keyboard and Bluetooth keyboard support.
 - **Bluetooth mouse confirmed working** on the MPC Live II, with nothing added. A **Bluetooth keyboard
@@ -77,6 +76,16 @@ The project is alpha: expect the feature list below to move faster than the vers
 
 ### Added
 
+- **Gen 2 (MPC XL / Live III) support as a per-board layer, not an XL-only fork.** `device/bin/board.sh`
+  detects the board from the device tree and `uname -m`; `board.js` gives the Node processes the same
+  documents path. Gen 1 keeps its `/media/acvs-content/MPC Documents`, `hw:1,0` at 48 kHz, `--tty=1`,
+  `rotate-90` and software raster; Gen 2 uses `/nvme/MPC Documents`, `plughw:0,0` at 44.1 kHz, no
+  `--tty=1`, `rotate-270` and the GPU by default. The 64-bit input-event layout is handled in
+  `touch-launcher.js`, `build-sysroot.sh` builds arm64/trixie with `ARCH`/`DISTRO`, `make-payload.sh`
+  builds either payload, and the installer picks the matching payload and Node binary and installs
+  the Gen 2 `/data/mpc-addins` boot hook. Gen 1 behavior is unchanged.
+  **Not yet hardware-verified in this tree**; the values come from djru5h's XL port tested on MPC OS
+  3.9.1, but the GPU default is this integration's choice. The Live III is untested.
 - **A keyboard for the glass.** The panel has no keyboard and this Chromium build ships no
   virtual-keyboard extension (`usr/lib/chromium/extensions` is empty), so the OSK switch bought
   nothing and every text box on every site was unusable - searching Freesound, logging in, naming a

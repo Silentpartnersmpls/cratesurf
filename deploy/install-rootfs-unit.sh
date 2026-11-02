@@ -13,6 +13,12 @@
 
 set -eu
 
+ARCH=$(uname -m 2>/dev/null || echo unknown)
+[ "$ARCH" = armv7l ] || {
+  echo "FAIL: Gen 2 ($ARCH) has no writable firmware rootfs; use /data/mpc-addins/cratesurf-browse/install.sh"
+  exit 1
+}
+
 SRC=/data/browser/mpc-browse.service
 DEV=/dev/mmcblk0p6
 MNT=/mnt/fw-root

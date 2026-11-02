@@ -16,9 +16,10 @@
 const fs = require('fs');
 const path = require('path');
 const { spawn } = require('child_process');
+const board = require('./board.js');
 
 const SYSROOT = '/data/browser/sysroot';
-const SAMPLES = process.env.MPC_FILES_ROOT || '/media/acvs-content/MPC Documents/Samples';
+const SAMPLES = process.env.MPC_FILES_ROOT || board.files;
 const RATE = 44100;
 const CHANNELS = 2;
 const BYTES_PER_FRAME = CHANNELS * 2;

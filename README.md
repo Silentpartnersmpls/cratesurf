@@ -23,9 +23,11 @@ reason this exists.
 
 ## READ THIS FIRST
 
-This is **alpha software that modifies your MPC**. It writes ~800 MB of Debian userland to
-`/data`, installs a systemd unit, and (only if you ask it to, with `--boot`) adds a file to the
-MPC's read-only firmware partition. It stops and starts the MPC application to borrow the screen.
+This is **alpha software that modifies your MPC**. It writes a Debian userland to `/data`
+(~800 MB on Gen 1, larger on Gen 2), then installs the boot path for the board: on Gen 1 a systemd
+unit in `/etc` and, only if you ask it to with `--boot`, a copy in the read-only firmware partition;
+on Gen 2 the `/data/mpc-addins` hook, because its root filesystem is dm-verity. It stops and starts
+the MPC application to borrow the screen.
 
 **Nobody is responsible for what happens to your device except you.** Not the author, not Akai,
 not inMusic, not anybody who helped write it. That includes a dead panel, a boot loop, a wiped
@@ -39,10 +41,10 @@ Three real risks, in plain words:
    survivable, but up to 5 minutes of work can still be missing from the autosaved copy, and a
    project you have never saved is not protected at all. **Save your project before switching into
    browse mode.** This is the risk that will actually bite you.
-2. **`install-service.sh --boot` writes to the firmware rootfs.** It remounts `/` read-write for a
-   few seconds, copies one unit file, and remounts read-only. It is additive and verified, and
+2. **`install-service.sh --boot` writes to the Gen 1 firmware rootfs.** It remounts `/` read-write
+   for a few seconds, copies one unit file, and remounts read-only. It is additive and verified, and
    [INSTALL.md](INSTALL.md#uninstalling) has the reverse of every step, but it is still your
-   firmware partition.
+   firmware partition. Gen 2 has no writable rootfs; its hook lives on `/data`.
 3. **The port 8798 toggle has no authentication.** It is meant for a home LAN. Do not port-forward
    it, do not put it on a public network, do not expose it through a tunnel.
 
@@ -53,13 +55,15 @@ If that is all fine by you: welcome. It is a genuinely good way to browse for sa
 ## What it actually is
 
 The MPC's OS is a Yocto image with no package manager, no X, no Wayland, no GTK, no SDL, and no
-Node. It does, however, ship **glibc 2.39**, which is the whole opening: Debian bookworm armhf
-binaries only need 2.36, so they run here unmodified.
+Node. On Gen 1 it ships **glibc 2.39**, which is the whole opening: Debian bookworm armhf binaries
+only need 2.36, so they run here unmodified. Gen 2 is aarch64 and uses a Debian trixie chroot with
+Mesa 25/panthor, because that is what gives the RK3588 its working GPU path.
 
-So CrateSurf is an **armhf chroot** full of real Debian packages (Chromium 150 when this was built, weston 10,
+So CrateSurf is a Debian chroot full of real packages (Chromium 150 when this was built, weston,
 libinput, PulseAudio, fonts, the cursor theme), built on your PC from `.deb` files and copied to
-`/data/browser/sysroot` on the MPC. A chroot rather than `LD_LIBRARY_PATH` because weston finds its
-modules, and Chromium its resources, by absolute compiled-in paths.
+`/data/browser/sysroot` on the MPC. Gen 1 is armhf/bookworm; Gen 2 is arm64/trixie. A chroot rather
+than `LD_LIBRARY_PATH` because weston finds its modules, and Chromium its resources, by absolute
+compiled-in paths.
 
 On the device, one always-on Node server (port 8798) does the switching, and a small Chromium
 extension draws the bar. Nothing runs on your computer at runtime. **Nothing in this project talks
@@ -82,8 +86,8 @@ Three models so far, all on rooted (SSH-enabled) firmware:
 | Model | Confirmed up to firmware |
 | --- | --- |
 | **MPC One+** (Gen 1) | **3.10** (also 3.9.1 and 3.4.2.13) |
-| **MPC Live II** | **3.9.1** |
-| **MPC XL** | **3.9.1**, through the community port only, not the installer ([see below](#mpc-xl-and-live-iii-gen-2)) |
+| **MPC Live II** (Gen 1) | **3.9.1** |
+| **MPC XL** (Gen 2) | **3.9.1**, community port; main-project support is implemented but not yet hardware-verified |
 
 "Up to" means the newest firmware someone has actually run it on, not a limit anyone knows about.
 A newer firmware may well work; it just has not been checked yet. If you run it on a model or a
@@ -93,21 +97,32 @@ version) is how this table grows.
 ### MPC XL and Live III (Gen 2)
 
 The MPC XL and the MPC Live III are a newer generation of Akai hardware: a 64-bit Rockchip RK3588
-where the One+ and Live II have a 32-bit RK3288. **The installer and the release payloads here are
-32-bit only, so they do not work on an XL yet.** The installer refuses a 64-bit unit rather than
-half-installing on it.
+where the One+ and Live II have a 32-bit RK3288. The work to support them here started from
+[djru5h's community port](https://github.com/djru5h/cratesurf/tree/mpc-xl-gen2), which was tested on
+an MPC XL (board `inmusic,acvc`) on MPC OS 3.9.1. That branch was XL-only; this tree now carries the
+same values as a per-board layer instead of hardcoding them for every unit.
 
-What does work today is a community port by [djru5h](https://github.com/djru5h): the
-[`mpc-xl-gen2` branch of their fork](https://github.com/djru5h/cratesurf/tree/mpc-xl-gen2), tested on
-an MPC XL (board `inmusic,acvc`) on MPC OS 3.9.1. It builds a 64-bit sysroot on Debian trixie, which
-gives the browser the XL's GPU, and it changes the screen rotation, the audio device, the documents
-folder and the way the browser starts at boot for the XL. Its own
-[MPC-XL-GEN2.md](https://github.com/djru5h/cratesurf/blob/mpc-xl-gen2/MPC-XL-GEN2.md) has the steps.
-Those changes are specific to the XL, so the branch is not for a One+ or Live II.
+What that means in practice:
 
-Folding Gen 2 into this repository, so one installer covers both generations, is on the
-[roadmap](ROADMAP.md#gen-2-mpc-xl-and-live-iii-in-the-main-project). The Live III has not been
-reported on yet.
+- `device/bin/board.sh` detects the board at runtime from the device tree and `uname -m`. Gen 1 keeps
+  `/media/acvs-content/MPC Documents`, `hw:1,0` at 48 kHz, `--tty=1`, `rotate-90` and software
+  raster. Gen 2 uses `/nvme/MPC Documents`, `plughw:0,0` at 44.1 kHz, no `--tty=1`, `rotate-270` and
+  the GPU by default. `board.js` gives the Node processes the same documents path.
+- The 64-bit input-event layout is handled in `touch-launcher.js` (16 bytes on armv7, 24 on arm64,
+  with the type/code/value offsets moving from 8/10/12 to 16/18/20), so the three-finger hold and
+  Ctrl+Alt+B read the correct records on both.
+- `build-sysroot.sh` takes `ARCH=arm64 DISTRO=trixie` for the Gen 2 chroot; the default remains
+  `armhf`/`bookworm` for Gen 1 with the same package list as before.
+- `make-payload.sh` can build either payload, and the installer probes the unit and chooses the
+  matching one plus the matching Node binary. Gen 1 still installs the systemd unit into the
+  firmware rootfs; Gen 2 uses the `/data/mpc-addins/cratesurf-browse/install.sh` boot hook because
+  its root filesystem is dm-verity. The SSH stick's autorun invokes that hook, so on Gen 2 the
+  stick must be in at boot for the toggle to come back automatically; otherwise run the hook over
+  SSH after boot.
+
+**Hardware status:** the XL values came from a tested port, but this per-board integration has not
+yet been run on an XL or a Live III by this repository. Treat Gen 2 as a testing target, not a
+confirmed release, until that pass happens. The Live III has not been reported on at all.
 
 ## The development unit
 
@@ -124,19 +139,27 @@ Everything was built and debugged on one MPC One+. This is that unit, in detail:
 | Audio | card 1 `ACVA` (`hw:1,0`), behind PulseAudio |
 | Browser | Chromium 150.0.7871.100 in the chroot, weston 10.0.1, `--disable-gpu` |
 
-**There is a GPU here, and it does not hold up on this panel.** The chroot has Mesa EGL for the
+**There is a GPU here, and it does not hold up on Gen 1's panel.** The chroot has Mesa EGL for the
 Mali-T760 and weston already hands Chromium a wayland socket, so `--disable-gpu` is a choice, not a
 limitation. Taking it out is genuinely much faster on paper: the same fixed card-grid page went from
 1.7 fps (561 ms median between frames) to 60.2 fps (16.6 ms median, 16.9 ms p95, three runs). On the
 glass it is not usable. Scrolling feels wild, and during a page load the framebuffer shows whole
 black frames and half-drawn frames with the nav bar missing entirely. **Speed that tears is worse
-than a page that is slow**, so software raster is the default and the GPU is opt-in:
+than a page that is slow**, so software raster is the Gen 1 default and the GPU is opt-in:
 `touch /data/browser/run/chrome-gpu-raster` and the next start drops `--disable-gpu`, `rm` the file
 to go back. If you want to chase it, the suspects are `--disable-gpu-compositing`, `--use-gl=egl`,
 and a newer Mesa, all of which `run/chrome-flags` can try without an edit. The lesson worth keeping:
 the benchmark that made this look fixed measured frame **timing** only and never looked at frame
 **contents**, so it could not have caught a broken frame. Measured on 3.10.0.49, Chromium
 150.0.7871.100.
+
+Gen 2 is the opposite case. The 64-bit port ships a Debian trixie sysroot specifically because its
+Mesa 25 has `panthor_dri.so` for the RK3588's Mali-G610, and the port's notes describe GPU
+acceleration working after enabling it with `chrome-gpu-raster`. This integration makes the GPU the
+Gen 2 default. That default has not been revalidated by this repository yet. If a panel or driver
+regression shows up, `touch /data/browser/run/chrome-software-raster` forces software for the next
+start; `rm` it to go back. Gen 1 is already software by default, and Gen 2 does
+not need `chrome-gpu-raster`.
 
 The MPC firmware version matters, and two of them have now been through it. Everything here was
 found on 3.4.2.13 and re-verified on 3.10.0.49 after the October 2026 update: `/data` came through
@@ -152,26 +175,28 @@ instead of assuming.
 **Untested. Assume it will not work until it does.** The thing that makes CrateSurf possible is a
 specific combination, and a device has to have all of it:
 
-- **armv7 (32-bit ARM) with a glibc of 2.36 or newer.** Check: `getconf GNU_LIBC_VERSION`.
-- **A DRM panel that weston 10 can drive**, appearing as a connector (`card1-DSI-1` on the tested
-  unit). Check: `ls /sys/class/drm`.
-- **systemd, with an `/etc` overlay and a `/data` partition holding a couple of GB.** Check:
-  `df -h /data`.
+- **Gen 1: armv7 (32-bit ARM) with glibc 2.36 or newer. Gen 2: aarch64.** Check:
+  `uname -m` and, on Gen 1, `getconf GNU_LIBC_VERSION`.
+- **A DRM panel that weston can drive**, appearing as connector `DSI-1` (`card1-DSI-1` on the
+  tested Gen 1 unit). Check: `ls /sys/class/drm`.
+- **systemd, with a `/data` partition holding a couple of GB.** Gen 1 also needs the writable
+  `/etc` overlay and `/dev/mmcblk0p6` for the boot copy; Gen 2 uses `/data/mpc-addins` because its
+  root filesystem is dm-verity. Check: `df -h /data` and `ls /data/mpc-addins`.
 - **The MPC app present as `acvs.service`** and stoppable. Check:
   `systemctl status acvs`.
 - **Root SSH access.** This project does not provide any way to get that; if you do not already
   have it, you are done before you start.
 - **Nothing else installed.** The firmware ships no Node, so the project brings its own: one
-  official armv7 binary, pinned and checksummed, at `/data/browser/node/bin/node`. Everything else
-  runs from the Debian chroot the project builds. See
-  [INSTALL.md](INSTALL.md#prerequisites).
+  official Node binary (armv7 on Gen 1, arm64 on Gen 2), pinned and checksummed, at
+  `/data/browser/node/bin/node`. Everything else runs from the Debian chroot the project builds.
+  See [INSTALL.md](INSTALL.md#prerequisites).
 
-The MPC One+, the MPC Live II and the MPC XL are confirmed (see
-[Confirmed working](#confirmed-working)). Other RK3288-era MPCs (the first Live, the X) are the
-plausible next candidates, and they are plausible rather than confirmed: different panel connectors,
-different partition layouts and different firmware builds have all been seen across the range. This
-section used to say later MPCs were close to certainly out; the XL working means that is no longer a
-safe assumption, so the probe below is the way to find out.
+The MPC One+ and the MPC Live II are confirmed on Gen 1; the MPC XL is confirmed on djru5h's
+community port, but the per-board Gen 2 integration in this tree is newer and still needs its own
+hardware pass (see [Confirmed working](#confirmed-working)). Other RK3288-era MPCs (the first Live,
+the X) are the plausible next candidates, and they are plausible rather than confirmed: different
+panel connectors, different partition layouts and different firmware builds have all been seen
+across the range.
 
 There is a read-only probe for exactly this. Run it against your device before you touch anything:
 
@@ -179,8 +204,9 @@ There is a read-only probe for exactly this. Run it against your device before y
 ./tools/probe-device.sh            # uses MPC_HOST, default root@mpc-one-mk2
 ```
 
-It reports each of the axes above and prints `shape matches the tested unit` or names what does
-not. It changes nothing on the device. If it says something does not match, that is not a bug
+It reports each of the axes above and prints `shape matches Gen 1` or `shape matches Gen 2`, or
+names what does not match. It changes nothing on the device. If it says something does not match,
+that is not a bug
 report we can act on; it is a device this has never been near.
 
 ## What it does not do
@@ -202,9 +228,11 @@ cratesurf-installer-darwin-arm64          macOS (Apple silicon)
 cratesurf-installer-linux-amd64           Linux
 ```
 
-It needs nothing installed on your machine - not Python, not Node, not OpenSSH. It checks the device,
-downloads and verifies the chroot, copies it over, installs the toggle, writes it into the firmware
-rootfs so it starts at boot, and then checks its own work. See
+The published 0.1.2-alpha binaries are Gen 1 only; for Gen 2, build the installer from this tree
+until the next release. It needs nothing installed on your machine - not Python, not Node, not
+OpenSSH. It checks the device, downloads and verifies the chroot, copies it over, installs the
+toggle, writes the Gen 1 unit into the firmware rootfs (or installs the Gen 2 addin hook) so it
+starts at boot, and then checks its own work. See
 **[installer/README.md](installer/README.md)**.
 
 An MPC needs root SSH before any of this can happen, and a stock unit does not have it. Option 2 in
@@ -222,10 +250,13 @@ cd cratesurf
 
 export MPC_HOST=root@192.168.1.50     # or root@mpc-one-mk2 if mDNS resolves
 
-./tools/probe-device.sh               # does the device look like the tested one?
-./build-sysroot.sh                    # ~240 MB of armhf .debs -> /data/browser/sysroot (~750 MB)
-./deploy.sh                           # scripts, extension, weston.ini, kiosk pages
-./deploy/install-service.sh --boot    # the 8798 toggle, and start it at boot
+./tools/probe-device.sh               # does the device look like a supported one?
+./build-sysroot.sh                    # Gen 1: armhf/bookworm -> /data/browser/sysroot (~750 MB)
+# Gen 2 instead:
+# WORK=/tmp/mpcsys-arm64 ARCH=arm64 DISTRO=trixie ./build-sysroot.sh
+./deploy.sh                           # scripts, extension, weston.ini, kiosk pages (Node auto-detected)
+./deploy/install-service.sh --boot    # Gen 1: 8798 toggle + firmware-rootfs boot copy
+                                      # Gen 2: install-service.sh installs the addin hook
 ```
 
 Then, on the MPC itself, hold **three fingers on the glass for 2.5 seconds**, or open
@@ -399,7 +430,8 @@ There is no CI. Everything here needs the hardware; a green checkmark would prov
 ## Uninstall
 
 Every step is reversible and [INSTALL.md](INSTALL.md#uninstalling) has the exact commands,
-including removing the unit from the firmware rootfs and putting the MPC back exactly as it was.
+including removing the Gen 1 unit from the firmware rootfs or the Gen 2 `/data/mpc-addins` hook,
+and putting the MPC back exactly as it was.
 
 ## Tip jar (optional, genuinely optional)
 

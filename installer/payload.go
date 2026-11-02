@@ -1,13 +1,13 @@
 package main
 
 // The payload is the reason an installer exists at all. Building the sysroot
-// needs apt and an armhf sandbox, which nobody should have to learn to get a
-// browser on their MPC, so the finished tree ships as one tarball laid out the
-// way /data/browser expects: sysroot/, node/, bin/, the kiosk pages, the unit.
+// needs apt and a foreign-architecture sandbox, which nobody should have to
+// learn to get a browser on their MPC, so the finished tree ships as one tarball
+// laid out the way /data/browser expects: sysroot/, node/, bin/, the kiosk
+// pages, the unit.
 //
-// The tarball is not in this repository. It is too big and it is a build
-// artifact, so it lives wherever releases live, and this file is the only place
-// that knows where.
+// There is one tarball per architecture: armv7l for Gen 1, arm64 for Gen 2. The
+// installer probes the device and downloads the matching one.
 
 import (
 	"crypto/sha256"
@@ -21,16 +21,66 @@ import (
 	"time"
 )
 
-// Filled in at build time with -X main.payloadURL=... and -X main.payloadSHA256=...
-// An empty URL means this build cannot download anything, which is exactly what
-// a developer build should say rather than pointing at a release that does not
-// exist yet.
+// Filled in at build time with -X main.payloadURLARMHF=... and the matching
+// SHA variable, or the ARM64 pair. An empty URL means this build cannot
+// download anything, which is exactly what a developer build should say rather
+// than pointing at a release that does not exist yet.
 var (
+	// Legacy names, kept so an older build command still produces a working
+	// Gen 1 installer. New builds set the per-architecture variables.
 	payloadURL    = ""
 	payloadSHA256 = ""
+
+	payloadURLARMHF    = ""
+	payloadSHA256ARMHF = ""
+	payloadURLARM64    = ""
+	payloadSHA256ARM64 = ""
 )
 
 const payloadName = "cratesurf-payload"
+
+// payloadFor chooses the release for the board the probe found. An explicit
+// --payload wins: that is the local-file path used for testing, and it may be
+// either architecture. Otherwise the detected generation decides, and a build
+// that has no 64-bit payload says so instead of downloading the 32-bit one and
+// failing halfway through the install.
+func payloadFor(info *Info, spec, sha string) (string, string, error) {
+	if spec != "" {
+		// A release build still knows the checksum for the detected board. Use
+		// it when --sha was omitted, so an explicit URL does not silently turn
+		// off verification. A build with no baked checksum stays unverified,
+		// which is the developer/local-payload case.
+		if sha == "" {
+			if info.Gen == 2 {
+				sha = payloadSHA256ARM64
+			} else {
+				sha = firstNonEmpty(payloadSHA256ARMHF, payloadSHA256)
+			}
+		}
+		return spec, sha, nil
+	}
+	// Choose by generation, not just the CPU string. If the device tree says
+	// this is a Gen 2 board, handing it the 32-bit payload is never correct,
+	// even if the reported architecture looks odd. problems() rejects a
+	// mismatched pair before this point.
+	if info.Gen == 2 {
+		if payloadURLARM64 != "" {
+			return payloadURLARM64, payloadSHA256ARM64, nil
+		}
+	} else if u := firstNonEmpty(payloadURLARMHF, payloadURL); u != "" {
+		return u, firstNonEmpty(payloadSHA256ARMHF, payloadSHA256), nil
+	}
+	return "", "", fmt.Errorf("this installer build has no payload for Gen %d (%q); pass --payload with a local tarball", info.Gen, info.Arch)
+}
+
+func firstNonEmpty(values ...string) string {
+	for _, v := range values {
+		if v != "" {
+			return v
+		}
+	}
+	return ""
+}
 
 type Payload struct {
 	Path string

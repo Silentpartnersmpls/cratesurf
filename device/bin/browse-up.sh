@@ -7,6 +7,9 @@
 # reloads its current project on start.
 R=/data/browser
 S=$R/sysroot
+# Board-specific paths and display/audio values. See bin/board.sh; Gen 1 is the
+# RK3288 One+/Live II, Gen 2 is the RK3588 XL/Live III.
+. "$R/bin/board.sh"
 # This project's own runtime, put there by deploy/install-node.sh. It used to point at
 # /data/mpc-agent/runtime/node/bin/node, which is another project's business and absent
 # on any MPC that does not have it.
@@ -77,7 +80,11 @@ bind run/udev
 # tree is mounted now because the destination is chosen per download and written as
 # a path under this root ("Samples/pack.zip"), so anything the MPC itself shows has
 # to exist in here or the browser cannot write to it.
-DOCS="/media/acvs-content/MPC Documents"
+#
+# The path differs by generation: Gen 1 keeps its content image under
+# /media/acvs-content, Gen 2 has the same folder on /nvme. board.sh owns that
+# difference so this script does not carry two copies of the mount logic.
+DOCS="$BOARD_DOCS"
 # /proc/mounts escapes the space in that path; the plain string would never match.
 DOCS_ESC=$(printf '%s' "$DOCS" | sed 's/ /\\040/g')
 mkdir -p "$S/downloads"
@@ -133,4 +140,4 @@ if [ -x "$NODE" ] && [ ! -f "$R/run/exit.pid" ]; then
 fi
 
 echo browse > "$R/run/mode"
-echo "browse mode up"
+echo "browse mode up ($BOARD_DESC, docs: $DOCS)"

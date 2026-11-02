@@ -8,6 +8,14 @@ It needs nothing installed on your machine: no Python, no Node, no OpenSSH, no
 package manager. It carries its own SSH client, so Windows, macOS and Linux all
 behave the same way.
 
+A release build from this tree has both payloads: armv7l for the MPC One+ /
+Live II (Gen 1) and arm64 for the MPC XL / Live III (Gen 2). The installer probes
+the unit, detects the generation, and picks the matching payload; there is no
+second build to choose. The published 0.1.2 binaries predate the Gen 2 payload, so
+use a release built from this tree for Gen 2. See
+[README.md](../README.md#mpc-xl-and-live-iii-gen-2) for the hardware status (the
+Gen 2 path has not been through this repository's hardware pass yet).
+
 ```
 cratesurf-installer-windows-amd64.exe
 cratesurf-installer-darwin-arm64        # Apple silicon
@@ -20,13 +28,16 @@ cratesurf-installer-linux-amd64
    MPC shows the IP.
 2. **Connects as root.** Most units flashed with an SSH firmware accept root
    with no password; if yours was set up with one, it asks.
-3. **Checks the device.** Model, architecture, firmware version, free space on
-   `/data`, and whether CrateSurf is already there. It refuses to continue on a
-   device it does not recognise rather than half-installing on it.
-4. **Downloads the payload** (once, ~350 MB, checksum-verified) and streams it
-   into `/data/browser`.
-5. **Installs the toggle service**, including the copy in the read-only firmware
-   rootfs, which is what makes it start at boot.
+3. **Checks the device.** Model, architecture, board generation, firmware
+   version, free space on `/data`, and whether CrateSurf is already there. It
+   refuses to continue on a device it does not recognise rather than
+   half-installing on it.
+4. **Downloads the matching payload** (once, checksum-verified) and streams it
+   into `/data/browser`. Gen 1 is armv7l/bookworm; Gen 2 is arm64/trixie.
+5. **Installs the toggle service.** Gen 1 gets the unit in `/etc` plus a copy in
+   the read-only firmware rootfs. Gen 2 installs
+   `/data/mpc-addins/cratesurf-browse/install.sh` instead, because its root
+   filesystem is dm-verity.
 6. **Checks its own work.** The service is running, something is listening on
    port 8798, and the browser binary is really in the sysroot. If any of that is
    false it says so and exits non-zero.
@@ -71,7 +82,8 @@ so this computer (and the scripts in this repo) keep working without it.
   `~/.ssh/config` so plain `ssh root@<mpc>` keeps working. Nothing else on your machine is touched.
   The installer offers that key first on every later connection, which is what makes a second run
   from the same computer work without asking for the password again.
-- The password is never written to a file and never sent anywhere. It is printed, once, on screen.
+- The password is never sent anywhere. It is printed once, and the only file it goes into is the
+  local `0600` file above.
 - Before the new password is trusted, the installer logs in with it and checks it is root. If that
   fails, the old `/etc/shadow` is put back and it says so. A backup is left at
   `/data/browser/run/shadow.bak` on the device either way.
@@ -106,9 +118,12 @@ cratesurf-installer --host 192.168.1.50 --accept-host-key  never ask about an un
 `--harden-only` is for units installed before this existed, which are sitting on a network with an
 open root shell.
 
-`--payload` takes a local tarball or an `http(s)` URL, which is how a release
-build works: `build.sh` bakes the release URL and checksum into the binary with
-`-ldflags`, so the shipped installer has nothing to configure.
+`--payload` takes a local tarball or an `http(s)` URL, which is how local
+testing works. A release build bakes one URL and checksum per architecture into
+the binary with `-ldflags` (`PAYLOAD_URL_ARMHF` / `PAYLOAD_SHA256_ARMHF` and
+`PAYLOAD_URL_ARM64` / `PAYLOAD_SHA256_ARM64`); the installer then has nothing to
+configure and picks the pair from the detected board generation. The old
+`PAYLOAD_URL`/`PAYLOAD_SHA256` names still mean armhf.
 
 ## How the payload is made
 
@@ -116,19 +131,28 @@ build works: `build.sh` bakes the release URL and checksum into the binary with
 
 ```
 sysroot/            the Debian chroot: chromium, weston, pulseaudio
-node/               the pinned Node runtime the toggle runs on
-bin/                the device scripts
-mpc-browse.service  the unit
+node/               the pinned Node runtime (armv7l or arm64)
+bin/                the device scripts, including board.sh and board.js
+mpc-browse.service  the Gen 1 unit
 install-rootfs-unit.sh
-```**Releases use `--release --sysroot`**, which builds from things that are in this repository and
+mpc-gen2-hook.sh    copied to /data/mpc-addins/cratesurf-browse/install.sh on Gen 2
+```
+
+**Releases use `--release --sysroot`**, which builds from things that are in this repository and
 nobody's computer: a `build-sysroot.sh CACHE_ONLY=1` tree, the files in git, and the pinned Node
 download. That matters for privacy as much as reproducibility. A payload pulled off a working unit is
 a snapshot of that unit's filesystem, and "nothing personal was in it this time" is not a property to
 rely on for every release.
 
 ```sh
-./make-payload.sh --release --sysroot /tmp/mpcsys/root   # what gets published
-./make-payload.sh --from-device root@mpc-one-mk2         # internal: snapshot of one unit
+# Gen 1 (default name: cratesurf-payload-YYYYMMDD.tar.gz)
+./make-payload.sh --release --sysroot /tmp/mpcsys/root
+
+# Gen 2 (name: cratesurf-payload-arm64-YYYYMMDD.tar.gz)
+ARCH=arm64 ./make-payload.sh --release --sysroot /tmp/mpcsys-arm64/root
+
+# Internal only: snapshot of one unit. Set ARCH=arm64 if that unit is Gen 2.
+./make-payload.sh --from-device root@mpc-one-mk2
 ```
 
 `--from-device` still exists for testing a build of the scripts against a unit we are sitting in
@@ -144,8 +168,12 @@ the device, which is exactly why the release path no longer starts from a device
 
 ```sh
 ./build.sh                                                  # all five targets into build/
-PAYLOAD_URL=... PAYLOAD_SHA256=... ./build.sh                # with a release baked in
+PAYLOAD_URL_ARMHF=... PAYLOAD_SHA256_ARMHF=... \
+PAYLOAD_URL_ARM64=... PAYLOAD_SHA256_ARM64=... ./build.sh     # with both releases baked in
 ```
+
+The two pairs are independent: a Gen 1 install has no reason to download the
+arm64 tree, and an XL must never be handed the armv7 one.
 
 Needs Go 1.23 or newer, and nothing else. `CGO_ENABLED=0` for every target, so
 each binary is static and self-contained.
@@ -153,7 +181,7 @@ each binary is static and self-contained.
 ## What this writes on the MPC
 
 Exactly what `INSTALL.md` lists, and nothing else: `/data/browser` (the chroot,
-the Node runtime, the scripts), the unit in `/etc/systemd/system/`, the same unit
-in the firmware rootfs for boot, and the MPC's own autosave settings, so a switch
-into browse mode does not throw away unsaved work. No audio, project, sample or
-plugin files are touched.
+the Node runtime, the scripts), the Gen 1 unit in `/etc/systemd/system/` and in
+the firmware rootfs, or the Gen 2 hook under `/data/mpc-addins/cratesurf-browse`,
+and the MPC's own autosave settings, so a switch into browse mode does not throw
+away unsaved work. No audio, project, sample or plugin files are touched.

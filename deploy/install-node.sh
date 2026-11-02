@@ -10,6 +10,10 @@
 # that other project installed. The runtime is now this project's own dependency,
 # installed by this script, at /data/browser/node/bin/node.
 #
+# The architecture is read from the device, not assumed: Gen 1 is armv7l and
+# Gen 2 is arm64. Binaries for the wrong CPU land fine and fail at exec, so the
+# version is verified on the device at the end.
+#
 # Only bin/node is copied. npm, corepack and the headers are for building things
 # on the device, which nothing here does. The version and its sha256 are pinned so
 # an upstream re-release cannot change what runs on the device unnoticed, and the
@@ -18,28 +22,46 @@
 # Idempotent: if the device already has the pinned version, this does nothing.
 set -eu
 
+HERE=$(cd "$(dirname "$0")" && pwd)
+. "$HERE/node-pins.sh"
+
 HOST=${MPC_HOST:-root@mpc-one-mk2}
 SSH="ssh -o BatchMode=yes -o StrictHostKeyChecking=no"
 SCP="scp -q -o BatchMode=yes -o StrictHostKeyChecking=no"
-
-VERSION=v22.23.4
-SHA256=c9057c6a3b8fbb9651ed115c1e96d4a7281b7b9c9ca89fa05865c98ed7ffd437
 DIR=/data/browser/node
-PKG=node-$VERSION-linux-armv7l
+
+remote_arch=$($SSH "$HOST" "uname -m 2>/dev/null" | tr -d '\r')
+case "$remote_arch" in
+  armv7l|armv7|armhf)
+    NODE_ARCH=$NODE_ARCH_ARMHF
+    SHA256=$NODE_SHA256_ARMHF
+    ;;
+  aarch64|arm64)
+    NODE_ARCH=$NODE_ARCH_ARM64
+    SHA256=$NODE_SHA256_ARM64
+    ;;
+  *)
+    echo "FAIL: $HOST reports architecture '$remote_arch'; expected armv7l or aarch64"
+    exit 1
+    ;;
+esac
 
 have=$($SSH "$HOST" "'$DIR/bin/node' --version 2>/dev/null || true" | tr -d '\r')
-if [ "$have" = "$VERSION" ]; then
-  echo "node $VERSION already installed at $DIR"
+if [ "$have" = "$NODE_VERSION" ]; then
+  echo "node $NODE_VERSION ($NODE_ARCH) already installed at $DIR"
   exit 0
 fi
-[ -z "$have" ] || echo "replacing node $have with $VERSION"
+[ -z "$have" ] || echo "replacing node $have with $NODE_VERSION ($NODE_ARCH)"
+
+PKG=node-$NODE_VERSION-linux-$NODE_ARCH
 
 # Keep the tarball between runs: a failed scp halfway through should not mean
-# downloading 25 MB again.
+# downloading 25 MB again. The architecture is in the filename, so the armhf and
+# arm64 runtimes can coexist in the cache.
 CACHE=${TMPDIR:-/tmp}/$PKG.tar.xz
 if [ ! -f "$CACHE" ]; then
   echo "+ downloading $PKG (~25 MB)"
-  curl -fsSL -o "$CACHE.part" "https://nodejs.org/dist/$VERSION/$PKG.tar.xz" || {
+  curl -fsSL -o "$CACHE.part" "https://nodejs.org/dist/$NODE_VERSION/$PKG.tar.xz" || {
     rm -f "$CACHE.part"
     echo "FAIL: could not download $PKG from nodejs.org"
     exit 1
@@ -56,7 +78,7 @@ echo "$SHA256  $CACHE" | sha256sum -c - >/dev/null || {
 EXTRACT=$(mktemp -d)
 trap 'rm -rf "$EXTRACT"' EXIT
 tar -xJf "$CACHE" -C "$EXTRACT" "$PKG/bin/node" "$PKG/LICENSE" 2>/dev/null || {
-  echo "FAIL: $CACHE is not a node-vX-linux-armv7l tarball"
+  echo "FAIL: $CACHE is not a $PKG tarball"
   exit 1
 }
 
@@ -69,7 +91,7 @@ $SSH "$HOST" "chmod 755 $DIR/bin/node"
 # "It copied" is not "it runs": a binary built for a different CPU or libc lands
 # fine and dies on exec, so ask the device.
 got=$($SSH "$HOST" "$DIR/bin/node --version" | tr -d '\r')
-[ "$got" = "$VERSION" ] || { echo "FAIL: device reports '$got', expected $VERSION"; exit 1; }
+[ "$got" = "$NODE_VERSION" ] || { echo "FAIL: device reports '$got', expected $NODE_VERSION"; exit 1; }
 
 size=$($SSH "$HOST" "du -h $DIR/bin/node | cut -f1" | tr -d '\r')
-echo "node $got installed at $DIR/bin/node ($size)"
+echo "node $got ($NODE_ARCH) installed at $DIR/bin/node ($size)"

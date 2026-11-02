@@ -6,6 +6,9 @@ you through separately. See [`installer/`](installer/README.md) for its own note
 the long way round, and it is worth reading even if you use the installer, because it is what the
 installer is doing.
 
+The 0.1.2-alpha binaries in Releases are Gen 1 only. For a Gen 2 unit, build the installer from this
+branch until the next release; the source steps below work for both.
+
 Follow this in order. Every step is reversible, and [Uninstalling](#uninstalling) has the exact
 reverse of everything this document adds.
 
@@ -21,9 +24,9 @@ is on you.
 
 | Requirement | Why | How to check |
 | --- | --- | --- |
-| MPC One+ (Gen 1) up to firmware **3.10**, or MPC Live II up to firmware **3.9.1**. The MPC XL (64-bit) is not supported by this installer yet: see [README.md](README.md#mpc-xl-and-live-iii-gen-2) | The models and firmware it is confirmed on (see [README.md](README.md#confirmed-working)); development was done on a One+ on 3.4.2.13 and 3.10.0.49 | Main menu → Preferences → Info, or `cat /usr/share/Akai/SME0/VERSION` on 3.10, or `strings /usr/bin/MPC \| grep -m1 '^3\.'` on 3.4 (the 3.10 binary carries no version string) |
+| MPC One+ or MPC Live II (Gen 1) up to firmware 3.10 / 3.9.1, or MPC XL (Gen 2) on 3.9.1. The Live III is untested. See [README.md](README.md#mpc-xl-and-live-iii-gen-2) | The models and firmware it is confirmed on (see [README.md](README.md#confirmed-working)); development was done on a One+ on 3.4.2.13 and 3.10.0.49, and the Gen 2 values come from djru5h's XL port | Main menu → Preferences → Info, or `cat /usr/share/Akai/SME0/VERSION` on 3.10, or `strings /usr/bin/MPC \| grep -m1 '^3\.'` on 3.4 (the 3.10 binary carries no version string) |
 | Root SSH into the MPC | Everything is installed over SSH | `ssh root@<mpc-ip> 'id -u'` prints `0` |
-| About 1 GB free on `/data` | The chroot is ~775 MB, plus a browser profile | `ssh root@<mpc-ip> df -h /data` |
+| About 1 GB free on `/data` (Gen 1), about 1.5 GB (Gen 2) | The chroot is ~775 MB on Gen 1 and larger on arm64, plus a browser profile | `ssh root@<mpc-ip> df -h /data` |
 | MPC on the same LAN as your computer | `ssh`, `scp` and port 8798 | `ping <mpc-ip>` |
 
 **Root SSH is not something this project provides.** If you do not already have it, stop here. If
@@ -34,20 +37,21 @@ and `--harden-only` does the same on an install that already exists. It saves th
 file goes too, [KNOWN-ISSUES.md](KNOWN-ISSUES.md) has the way back.
 
 **Nothing else has to be installed on the MPC.** The firmware ships no Node, so this project brings
-its own: `deploy/install-node.sh` fetches the official armv7 build, checks it against a pinned
-sha256, and puts the single `node` binary at `/data/browser/node/bin/node`, which is where
-`browse-up.sh` and the unit look for it. `./deploy.sh` and `./deploy/install-service.sh` both call
-that script, so there is no separate step; run it on its own to get the download out of the way
-first. It is idempotent and prints one line when the pinned version is already installed.
+its own: `deploy/install-node.sh` reads the device architecture, fetches the official armv7 or arm64
+build, checks it against a pinned sha256, and puts the single `node` binary at
+`/data/browser/node/bin/node`, which is where `browse-up.sh` and the unit look for it. `./deploy.sh`
+and `./deploy/install-service.sh` both call that script, so there is no separate step; run it on its
+own to get the download out of the way first. It is idempotent and prints one line when the pinned
+version is already installed.
 
 That runtime is this project's own dependency, not a loan from anywhere else. Earlier versions
 pointed at `/data/mpc-agent/runtime/node/bin/node`, which meant CrateSurf did not work unless
 another project happened to be installed on the same device; `install-rootfs-unit.sh` still
 recognises that old `ExecStart` so an earlier install upgrades instead of refusing.
 
-The version and its checksum live at the top of `deploy/install-node.sh` (`VERSION`, `SHA256`).
-Change both together, or the check deletes the download and fails before anything reaches the
-device.
+The version and both checksums live in `deploy/node-pins.sh`
+(`NODE_VERSION`, `NODE_SHA256_ARMHF`, `NODE_SHA256_ARM64`). Change them together, or the check
+deletes the download and fails before anything reaches the device.
 
 Everything else runs from the chroot this project builds, so the MPC needs no other software.
 
@@ -55,16 +59,16 @@ Everything else runs from the chroot this project builds, so the MPC needs no ot
 
 | Requirement | Why |
 | --- | --- |
-| Debian or Ubuntu (or anything with `apt-get` and `dpkg-deb`; WSL2 and a container both work) | `build-sysroot.sh` drives `apt` to download armhf packages |
+| Debian or Ubuntu (or anything with `apt-get` and `dpkg-deb`; WSL2 and a container both work) | `build-sysroot.sh` drives `apt` to download armhf or arm64 packages |
 | `ssh`, `scp`, `tar`, `gzip`, `curl` | Copying things to the MPC |
-| ~500 MB of scratch in `/tmp` | Package downloads, before trimming |
+| ~500 MB of scratch in `/tmp` on Gen 1, ~1 GB on Gen 2 | Package downloads, before trimming |
 
 macOS can run every step except `build-sysroot.sh`, which needs `apt`. Build the sysroot on a
 Linux box (a container is fine) and copy `/data/browser/sysroot` across, then carry on from step 3.
 
 `build-sysroot.sh` installs **nothing** on your computer. It points `apt` at a sandbox under
-`/tmp/mpcsys`, downloads armhf `.deb` files, and unpacks them with `dpkg-deb -x`. No `sudo`, no
-foreign architecture registered, no system packages touched.
+`/tmp/mpcsys`, downloads the matching architecture's `.deb` files, and unpacks them with
+`dpkg-deb -x`. No `sudo`, no foreign architecture registered, no system packages touched.
 
 ---
 
@@ -112,11 +116,13 @@ Read-only. Changes nothing.
 -- panel            PASS card1-DSI-1 connected, modes: 800x1280
    node             not installed yet, deploy/install-node.sh fetches one
 
-== verdict: shape matches the tested unit (MPC One+ Gen 1)
+== verdict: shape matches Gen 1 (armv7l, /media documents, /etc unit)
    README.md and INSTALL.md apply. Save your project before the first switch.
 ```
 
-If the verdict is anything other than that, read what it complained about and decide whether you
+On an MPC XL the same probe prints `machine aarch64`, `board ... inmusic,acvc`, and
+`verdict: shape matches Gen 2 (aarch64, /nvme documents, addin boot hook)`. If the verdict is
+anything other than a Gen 1 or Gen 2 match, read what it complained about and decide whether you
 want to be the first person to try this on that device. Nothing below is guaranteed on a shape
 that does not match.
 
@@ -126,14 +132,22 @@ that does not match.
 ./build-sysroot.sh
 ```
 
-This resolves and downloads Chromium, weston, PulseAudio and friends (about 240 MB of `.deb`s,
-just over 320 packages), unpacks them into `/tmp/mpcsys/root`, trims docs, locales and icon sets,
-then streams the result to `/data/browser/sysroot` on the MPC.
+Gen 1 uses `armhf` on Debian bookworm by default. For Gen 2, build the arm64/trixie tree into a
+separate work directory so the two do not overwrite each other:
+
+```sh
+WORK=/tmp/mpcsys-arm64 ARCH=arm64 DISTRO=trixie ./build-sysroot.sh
+```
+
+This resolves and downloads Chromium, weston, PulseAudio and friends (about 240 MB of `.deb`s and
+just over 320 packages on Gen 1; the arm64/trixie set is larger), unpacks them into `$WORK/root`,
+trims docs, locales and icon sets, then streams the result to `/data/browser/sysroot` on the MPC.
+The Gen 2 build adds the Mesa DRI/EGL userspace that panthor needs.
 
 Expect, with the numbers moving a little as Debian updates bookworm:
 
 ```
-== sandbox at /tmp/mpcsys
+== armhf / bookworm sandbox at /tmp/mpcsys
 == resolving and downloading
 == unpacking
 321 packages unpacked
@@ -142,8 +156,9 @@ Expect, with the numbers moving a little as Debian updates bookworm:
 == done. now: ./deploy.sh && ./deploy/install-service.sh
 ```
 
-The unpacked tree is about 630 MB and the folder on the MPC ends up around 700 to 800 MB once
-Chromium has written a profile into it.
+On Gen 1 the unpacked tree is about 630 MB and the folder on the MPC ends up around 700 to 800 MB
+once Chromium has written a profile into it. The arm64/trixie tree is larger; that is why the Gen 2
+prerequisite asks for about 1.5 GB free.
 
 A few things that look like errors and are not:
 
@@ -163,27 +178,34 @@ scratch. Set `CACHE_ONLY=1` to leave the tree in `/tmp/mpcsys/root` and ship not
 ./deploy.sh
 ```
 
-Copies `device/bin/*`, the extension, `weston.ini`, the kiosk pages and the unit into
+Copies `device/bin/*`, the extension, `weston.ini`, the kiosk pages, the unit and the Gen 2 hook into
 `/data/browser`, installs the Node runtime if it is missing, makes the shell scripts executable and
 seeds the Chromium profile so downloads go to the sample folder without a dialog. A first run on a
-device without Node starts with a `+ downloading node-v22.23.4-linux-armv7l (~25 MB)` line and then
-`node v22.23.4 installed at /data/browser/node/bin/node`; after that it says
-`node v22.23.4 already installed` and moves on. Expect `deployed`, then the two lines telling you
-how to enter and leave browse mode.
+device without Node starts with a `+ downloading node-v22.23.4-linux-armv7l (~25 MB)` line (or
+`linux-arm64` on Gen 2) and then `node v22.23.4 (...) installed at /data/browser/node/bin/node`;
+after that it says `node v22.23.4 (...) already installed` and moves on. Expect `deployed`, then the
+two lines telling you how to enter and leave browse mode.
 
 ## Step 4: install the toggle service
 
 ```sh
-./deploy/install-service.sh --boot   # installs into /etc AND into the firmware rootfs
+./deploy/install-service.sh --boot   # Gen 1: /etc AND the firmware rootfs
 ```
 
-Run it once, with `--boot`. Without that flag the toggle only exists in the overlay on `/data`, which is
-mounted about two seconds into boot, after systemd has already worked out what to start, so it
-looks enabled and never runs. That is why the installer does the rootfs copy, and why it is careful:
-it refuses to overwrite a file it did not put there, compares the copy byte for byte, and always
-puts `/` back to read-only.
+Run it once, with `--boot` on Gen 1. Without that flag the toggle only exists in the overlay on
+`/data`, which is mounted about two seconds into boot, after systemd has already worked out what to
+start, so it looks enabled and never runs. That is why the installer does the rootfs copy, and why
+it is careful: it refuses to overwrite a file it did not put there, compares the copy byte for byte,
+and always puts `/` back to read-only.
 
-Expect:
+Gen 2 has no writable firmware rootfs, so `install-service.sh` detects `aarch64` and installs
+`/data/mpc-addins/cratesurf-browse/install.sh` instead; `--boot` has nothing extra to do there. The
+hook starts `cratesurf-control` through `systemd-run` so it survives the SSH stick's autorun
+cleanup. That autorun is what invokes the hook at boot, so **the SSH stick has to be inserted when
+the MPC boots** for the toggle to come back by itself. Without it, start the same hook over SSH
+(`/data/mpc-addins/cratesurf-browse/install.sh`) after boot.
+
+Expect on Gen 1:
 
 ```
 unit installed: NNN bytes, symlink -> /etc/systemd/system/mpc-browse.service
@@ -193,7 +215,8 @@ active
 -- listen on 8798: 1
 ```
 
-If the last line says `0`, the toggle is not listening. See
+On Gen 2 expect `cratesurf-browse: started control server ...` from the hook and the same
+`-- listen on 8798: 1`. If the last line says `0`, the toggle is not listening. See
 [If something goes wrong](#if-something-goes-wrong).
 
 ---
@@ -216,7 +239,8 @@ You should get HTML for the phone page, with `BROWSE ON THE MPC` in it.
 ssh $MPC_HOST 'ls /data/browser/sysroot/usr/lib/chromium/chromium && du -sh /data/browser/sysroot'
 ```
 
-The binary exists and the size is somewhere between 700 MB and 800 MB.
+The binary exists and the size is somewhere between 700 MB and 800 MB on Gen 1; the arm64 Gen 2
+tree is larger. If the binary is missing, the payload did not unpack completely.
 
 **3. Entering browse mode works from a shell.**
 
@@ -341,13 +365,22 @@ ssh $MPC_HOST /data/browser/bin/browse-down.sh
 
 **2. Stop and disable the toggle, and remove it from `/etc`.**
 
+Gen 1:
+
 ```sh
 ssh $MPC_HOST 'systemctl disable --now mpc-browse.service; rm -f /etc/systemd/system/mpc-browse.service; systemctl daemon-reload'
 ```
 
-**3. Remove the unit from the firmware rootfs** (this is the reverse of `--boot`). It remounts `/`
-read-write, removes the unit and its `multi-user.target.wants` symlink, and puts `/` back to
-read-only whatever happens:
+Gen 2 (there is no `/etc` unit; the control server is a transient unit and the hook lives on
+`/data`):
+
+```sh
+ssh $MPC_HOST 'systemctl stop cratesurf-control 2>/dev/null; rm -rf /data/mpc-addins/cratesurf-browse'
+```
+
+**3. Remove the unit from the firmware rootfs** (this is the reverse of `--boot` on Gen 1 only).
+It remounts `/` read-write, removes the unit and its `multi-user.target.wants` symlink, and puts `/`
+back to read-only whatever happens. Skip this on Gen 2, whose rootfs is dm-verity:
 
 ```sh
 ssh $MPC_HOST 'set +e
@@ -402,15 +435,16 @@ For anyone who wants to know exactly what this touches:
 
 | Path | What | Removed by |
 | --- | --- | --- |
-| `/data/browser/sysroot` | the Debian chroot, ~775 MB | step 4 |
+| `/data/browser/sysroot` | the Debian chroot, ~775 MB on Gen 1 and larger on arm64 | step 4 |
 | `/data/browser/node` | the pinned Node runtime, `bin/node` and its `LICENSE`, ~105 MB | step 4 |
 | `/data/browser/bin` and `/data/browser/sysroot/opt` | the scripts, the extension, the kiosk pages, `weston.ini` | step 4 |
 | `/data/browser/run` | pids, the `mode` file, logs | step 4 |
-| `/etc/systemd/system/mpc-browse.service` | the toggle unit | step 2 |
-| `/dev/mmcblk0p6` firmware rootfs | the same unit, for boot | step 3 |
+| `/etc/systemd/system/mpc-browse.service` | the Gen 1 toggle unit | step 2 |
+| `/dev/mmcblk0p6` firmware rootfs | the Gen 1 unit, for boot | step 3 |
+| `/data/mpc-addins/cratesurf-browse/install.sh` | the Gen 2 boot hook | step 2 |
 | `/data/Settings/MPC/MPC.settings` | `AutoSaveEnabled`, `AutoSaveTimeout` | step 5 |
 | `/data/Settings/MPC/MPC.settings.bak-autosave` | backup of that file | optional |
-| `/media/acvs-content/MPC Documents` | downloads (in `Samples` unless you pick another folder) and recordings | you |
+| `/media/acvs-content/MPC Documents` (Gen 1) or `/nvme/MPC Documents` (Gen 2) | downloads (in `Samples` unless you pick another folder) and recordings | you |
 
 Nothing else on the MPC is written by installing or using CrateSurf. The MPC application binary,
 its content, and the rest of the firmware are untouched.

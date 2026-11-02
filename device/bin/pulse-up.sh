@@ -11,11 +11,21 @@
 # /dev/snd from there. Clients connect anonymously over a unix socket because
 # there is no session bus and no per-user cookie in a kiosk.
 #
-# The sink is hw:1,0 = card 1 "ACVA", the inmusic codec that drives the
-# headphones and main outs. Card 0 shows up as "MPC One +" USB audio, which is
-# the box presenting itself to a connected computer, not an output.
+# The sink is board-specific. Gen 1 uses hw:1,0 = card 1 "ACVA", the inmusic
+# codec that drives the headphones and main outs; card 0 is "MPC One +" USB audio,
+# the box presenting itself to a connected computer, not an output. Gen 2 uses
+# plughw:0,0, because the RK3588 codec is card 0 and it needs 44.1 kHz with a
+# larger ALSA buffer to stay clean. board.sh owns the values; this script only
+# turns them into the module argument.
 R=/data/browser
 S=$R/sysroot
+. "$R/bin/board.sh"
+
+AUDIO_ARGS="device=$BOARD_AUDIO_DEVICE sink_name=codec rate=$BOARD_AUDIO_RATE channels=$BOARD_AUDIO_CHANNELS tsched=0"
+if [ -n "$BOARD_AUDIO_EXTRA" ]; then
+  AUDIO_ARGS="$AUDIO_ARGS $BOARD_AUDIO_EXTRA"
+fi
+export CRATESURF_AUDIO_ARGS="$AUDIO_ARGS"
 
 "$R/bin/pulse-down.sh"
 
@@ -28,7 +38,7 @@ setsid /usr/sbin/chroot "$S" /bin/sh -c '
   exec /usr/bin/pulseaudio --system --daemonize=no --disallow-exit --exit-idle-time=-1 \
     --realtime=0 -n --log-target=file:/tmp/pulse.log \
     --load="module-native-protocol-unix auth-anonymous=1 socket=/run/pulse/native" \
-    --load="module-alsa-sink device=hw:1,0 sink_name=codec rate=48000 channels=2 tsched=0" \
+    --load="module-alsa-sink $CRATESURF_AUDIO_ARGS" \
     --load="module-null-sink sink_name=silent"
 ' > "$R/run/pulse.out" 2>&1 < /dev/null &
 

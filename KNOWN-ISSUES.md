@@ -1,8 +1,9 @@
 # Known issues
 
-**Version 0.1.0-alpha.** Everything below is true of the current code on the one unit it has been
-run on (MPC One+ Gen 1, on firmware 3.4.2.13 and again on 3.10.0.49 after the 2026-10-29 update).
-Nothing here is a rumour; each item says how it was
+**Version 0.1.2-alpha.** Everything below is true of the current code on the one unit it has been
+run on (MPC One+ Gen 1, on firmware 3.4.2.13 and again on 3.10.0.49 after the 2026-10-29 update),
+except the Gen 2 items, which say what came from the XL community port and what still needs a pass
+here. Nothing here is a rumour; each item says how it was
 found, what it does to you, and what to do about it.
 
 Severity: **[HIGH]** data loss or a dead panel, **[MED]** you will hit it in normal use,
@@ -47,6 +48,11 @@ node runtime, scripts and all. Only p6 was replaced.
 
 **Fix:** `ssh root@<mpc-ip> /data/browser/install-rootfs-unit.sh`, or rerun the installer. It refuses
 rather than half-installing if `/` is no longer `mmcblk0p6`.
+
+Gen 2 has no writable `mmcblk0p6` boot copy. Its autostart is
+`/data/mpc-addins/cratesurf-browse/install.sh`, which lives on `/data`; an update that leaves
+`/data` alone leaves the hook in place. The Gen 2 path has not been through a firmware update here
+yet.
 
 ---
 
@@ -114,6 +120,26 @@ Browse the sample sites, not the open sewer.
 ## Hardware paths
 
 What is proven with real hardware in the loop and what is not, kept honest in both directions.
+
+### [MED] Gen 2 support is new and has not been through this repository's hardware pass
+
+The RK3588 values (screen rotation, `plughw:0,0` at 44.1 kHz, `/nvme/MPC Documents`, the
+trixie/Mesa 25/panthor stack, and the `/data/mpc-addins` boot hook) come from djru5h's XL community
+port, tested on an MPC XL on MPC OS 3.9.1. They are now selected per board by `device/bin/board.sh`
+instead of being applied to every unit, and Gen 1 still uses the values this project has always
+used. Making the GPU the Gen 2 default is this integration's choice, not a separate hardware result.
+The integrated per-board path has not yet been run on an XL or a Live III here, so treat Gen 2 as a
+test target until it has. The Live III has not been reported on at all.
+
+**If a Gen 2 install goes wrong:** `--check` is read-only, the Gen 1 systemd unit is not installed on
+Gen 2, and after `systemctl stop cratesurf-control` the boot hook can be removed with
+`rm -rf /data/mpc-addins/cratesurf-browse`. Save your project before the first switch, as always.
+
+**Gen 2 boot depends on the SSH stick.** The hook lives on `/data` and is invoked by the SSH
+stick's boot autorun, because the Gen 2 root filesystem is dm-verity. Keep that stick inserted when
+the MPC boots if you want the :8798 toggle and the gesture watcher to come back by themselves. If it
+was not inserted, run `/data/mpc-addins/cratesurf-browse/install.sh` over SSH after boot; the
+browser install and its files are still there.
 
 ### [LOW] A Bluetooth keyboard has to be paired from the MPC's own Bluetooth screen
 
@@ -243,25 +269,28 @@ before every launch, because Chromium reloads the registered copy instead of the
 ### [LOW] The Node runtime is a 105 MB download this project owns
 The firmware ships no Node, and an earlier version borrowed the one at
 `/data/mpc-agent/runtime/node/bin/node`, which quietly made CrateSurf depend on that other project
-being installed. `deploy/install-node.sh` now fetches a pinned official armv7 build (v22.23.4,
-sha256 checked) to `/data/browser/node/bin/node`, so the install needs no second project, but it does
-cost ~105 MB on `/data` and a ~25 MB download on your computer the first time.
+being installed. `deploy/install-node.sh` now fetches a pinned official armv7 or arm64 build
+(v22.23.4, sha256 checked) to `/data/browser/node/bin/node`, so the install needs no second project,
+but it does cost ~105 MB on `/data` and a ~25 MB download on your computer the first time.
 
-The path is still written in two files, `device/bin/browse-up.sh` and `device/mpc-browse.service`.
+The path is still written in `device/bin/browse-up.sh` and the Gen 1 unit (or the Gen 2 boot hook).
 Collapsing it into one setting is an obvious first contribution; nothing breaks by leaving it.
 
-### [MED] A firmware update will wipe the boot entry
+### [MED] A Gen 1 firmware update will wipe the boot entry
 `install-service.sh --boot` writes the unit into the read-only firmware rootfs, because a unit that
 only exists in the `/data` overlay never starts at boot on this firmware. A firmware update replaces
 that partition, so re-run `./deploy/install-service.sh --boot` afterwards. Everything on `/data`
 survives, but a new firmware may also move the partition the installer writes to; the script refuses
-to guess and will fail loudly if `/dev/mmcblk0p6` is not what it expects.
+to guess and will fail loudly if `/dev/mmcblk0p6` is not what it expects. Gen 2's hook is on `/data`
+and should survive, but that has not been tested through an update here.
 
-### [MED] The project assumes the shape of 3.4.2.13 and 3.10.0.49
+### [MED] The Gen 1 path assumes the shape of 3.4.2.13 and 3.10.0.49
 `/dev/mmcblk0p6` as the firmware rootfs, `acvs.service` as the MPC app, `DSI-1` as the panel
 connector, `hw:1,0` as the audio codec and `/data/Settings/MPC/MPC.settings` as the settings file
 are all facts about these builds. Both firmware versions were checked against every one of them and
 all five matched, so the 3.4.2.13 to 3.10.0.49 update did not move any of it. A third build may.
+Gen 2 changes several of these (`/nvme/MPC Documents`, `plughw:0,0`, the addin hook); those values
+are covered by the Gen 2 item above and have not been verified here.
 
 ### [LOW] `deploy.sh` does not restart the service
 A live browsing session survives a deploy (`KillMode=process` is set for exactly that reason), and

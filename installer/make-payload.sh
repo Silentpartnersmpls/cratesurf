@@ -24,6 +24,25 @@ REPO=$(cd "$HERE/.." && pwd)
 OUT=${OUT:-$HERE/dist}
 SRC_DEVICE=""
 SYSROOT=""
+ARCH=${ARCH:-armv7l}
+. "$REPO/deploy/node-pins.sh"
+
+case "$ARCH" in
+  armv7l|armv7|armhf)
+    NODE_ARCH=$NODE_ARCH_ARMHF
+    NODE_SHA=$NODE_SHA256_ARMHF
+    DEFAULT_NAME=cratesurf-payload
+    ;;
+  aarch64|arm64)
+    NODE_ARCH=$NODE_ARCH_ARM64
+    NODE_SHA=$NODE_SHA256_ARM64
+    DEFAULT_NAME=cratesurf-payload-arm64
+    ;;
+  *)
+    echo "FAIL: ARCH must be armv7l (or armhf) or aarch64 (or arm64), not '$ARCH'" >&2
+    exit 2
+    ;;
+esac
 
 RELEASE=0
 while [ $# -gt 0 ]; do
@@ -59,6 +78,10 @@ chmod +x "$STAGE"/bin/*.sh
 cp "$REPO/device/mpc-browse.service" "$STAGE/mpc-browse.service"
 cp "$REPO/deploy/install-rootfs-unit.sh" "$STAGE/install-rootfs-unit.sh"
 chmod +x "$STAGE/install-rootfs-unit.sh"
+# Gen 2 boots this from /data/mpc-addins/cratesurf-browse/install.sh; the
+# installer copies it there when the probe reports aarch64.
+cp "$REPO/device/mpc-gen2-hook.sh" "$STAGE/mpc-gen2-hook.sh"
+chmod +x "$STAGE/mpc-gen2-hook.sh"
 
 if [ -n "$SRC_DEVICE" ]; then
   SSH="ssh -o BatchMode=yes -o StrictHostKeyChecking=no"
@@ -82,6 +105,18 @@ else
     echo "FAIL: $SYSROOT has no chromium binary; is that a build-sysroot.sh CACHE_ONLY=1 tree?"
     exit 1
   }
+  # A payload with an arm64 Node and an armhf Chromium (or the reverse) unpacks
+  # cleanly and fails at launch. Catch a mismatched ARCH/sysroot here, while the
+  # error still says which one is wrong. readelf is optional: the build machine
+  # may not have binutils, and this is a guard, not a requirement.
+  if command -v readelf >/dev/null 2>&1; then
+    machine=$(readelf -h "$SYSROOT/usr/lib/chromium/chromium" 2>/dev/null |
+      sed -n 's/^[[:space:]]*Machine:[[:space:]]*//p')
+    case "$ARCH:$machine" in
+      armv7l:ARM|armv7:ARM|armhf:ARM|aarch64:AArch64|arm64:AArch64) ;;
+      *) echo "FAIL: the sysroot chromium is '$machine' but ARCH=$ARCH; build the matching sysroot first" >&2; exit 1 ;;
+    esac
+  fi
   mkdir -p "$STAGE/sysroot"
   cp -a "$SYSROOT"/. "$STAGE/sysroot/"
   # Same list as the device route, plus anything a build leaves behind.
@@ -90,12 +125,10 @@ else
          "$STAGE/sysroot/run" "$STAGE/sysroot/var/run" "$STAGE/sysroot/var/log"
 
   # The Node runtime is not part of a sysroot, so fetch the pinned build from
-  # nodejs.org using the version and checksum install-node.sh already owns. Two
-  # copies of that pin would drift, and the drift would be silent.
-  NODE_VERSION=$(sed -n 's/^VERSION=//p' "$REPO/deploy/install-node.sh" | head -n1)
-  NODE_SHA=$(sed -n 's/^SHA256=//p' "$REPO/deploy/install-node.sh" | head -n1)
-  [ -n "$NODE_VERSION" ] && [ -n "$NODE_SHA" ] || { echo "FAIL: no Node pin in deploy/install-node.sh"; exit 1; }
-  PKG=node-$NODE_VERSION-linux-armv7l
+  # nodejs.org using the version and checksum deploy/node-pins.sh already owns.
+  # Two copies of that pin would drift, and the drift would be silent.
+  [ -n "$NODE_VERSION" ] && [ -n "$NODE_SHA" ] || { echo "FAIL: no Node pin in deploy/node-pins.sh"; exit 1; }
+  PKG=node-$NODE_VERSION-linux-$NODE_ARCH
   CACHE=${TMPDIR:-/tmp}/$PKG.tar.xz
   if [ ! -f "$CACHE" ]; then
     echo "== fetching $PKG"
@@ -135,12 +168,15 @@ chmod 1777 "$STAGE/sysroot/tmp"
 [ -f "$STAGE/sysroot/opt/home.html" ] || { echo "FAIL: no start page in the payload"; exit 1; }
 [ -f "$STAGE/sysroot/opt/kb-ext/manifest.json" ] || { echo "FAIL: no nav bar in the payload"; exit 1; }
 [ -f "$STAGE/sysroot/etc/xdg/weston/weston.ini" ] || { echo "FAIL: no weston.ini in the payload"; exit 1; }
+[ -f "$STAGE/bin/board.sh" ] || { echo "FAIL: no board profile in the payload"; exit 1; }
+[ -f "$STAGE/bin/board.js" ] || { echo "FAIL: no Node board profile in the payload"; exit 1; }
+[ -f "$STAGE/mpc-gen2-hook.sh" ] || { echo "FAIL: no Gen 2 boot hook in the payload"; exit 1; }
 [ -x "$STAGE/sysroot/usr/lib/chromium/chromium" ] || echo "warn: no chromium binary in the payload"
 
-NAME=${NAME:-cratesurf-payload}
+NAME=${NAME:-$DEFAULT_NAME}
 VER=$(date +%Y%m%d)
 TGZ="$OUT/$NAME-$VER.tar.gz"
-echo "== packing"
+echo "== packing $ARCH payload"
 tar -C "$STAGE" -czf "$TGZ" .
 ( cd "$OUT" && sha256sum "$(basename "$TGZ")" > "$(basename "$TGZ").sha256" )
 
@@ -148,4 +184,5 @@ du -h "$TGZ" | awk '{print "== " $1 "  " $2}'
 cat "$TGZ.sha256"
 echo
 echo "publish that file and its .sha256, then build the installer with:"
-echo "  PAYLOAD_URL=<url> PAYLOAD_SHA256=<sha> ./build.sh"
+echo "  PAYLOAD_URL_ARMHF=<url> PAYLOAD_SHA256_ARMHF=<sha> \\"
+echo "  PAYLOAD_URL_ARM64=<url> PAYLOAD_SHA256_ARM64=<sha> ./build.sh"

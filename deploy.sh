@@ -26,8 +26,9 @@ scp -q -o BatchMode=yes -o StrictHostKeyChecking=no "$HERE"/device/calib.html "$
 scp -q -o BatchMode=yes -o StrictHostKeyChecking=no "$HERE"/device/keys.html "$HOST:$R/sysroot/opt/keys.html"
 scp -q -o BatchMode=yes -o StrictHostKeyChecking=no "$HERE"/device/download-test.html "$HOST:$R/sysroot/opt/download-test.html"
 scp -q -o BatchMode=yes -o StrictHostKeyChecking=no "$HERE"/device/mpc-browse.service "$HOST:$R/mpc-browse.service"
+scp -q -o BatchMode=yes -o StrictHostKeyChecking=no "$HERE"/device/mpc-gen2-hook.sh "$HOST:$R/mpc-gen2-hook.sh"
 
-$SSH "$HOST" "chmod +x $R/bin/*.sh && $R/bin/setup-profile.sh && echo deployed"
+$SSH "$HOST" "chmod +x $R/bin/*.sh $R/mpc-gen2-hook.sh && $R/bin/setup-profile.sh && echo deployed"
 
 echo
 echo "enter browse mode:  $SSH $HOST $R/bin/browse-up.sh"

@@ -1,9 +1,14 @@
 #!/bin/bash
-# Build the armhf sysroot the browser runs in, then ship it to the MPC.
+# Build a Debian sysroot the browser runs in, then ship it to the MPC.
 #
-# The MPC's OS has no package manager, no X, no Wayland, no GTK and no SDL — but
-# it does have glibc 2.39, so Debian bookworm armhf binaries (glibc 2.36) run
-# unmodified. This builds a chroot out of .deb packages and copies it to /data.
+# Two generations, one builder:
+#   Gen 1  ARCH=armhf DISTRO=bookworm   (default; RK3288, armv7l)
+#   Gen 2  ARCH=arm64 DISTRO=trixie    (RK3588, aarch64, Mesa/panthor)
+#
+# The MPC's OS has no package manager, no X, no Wayland, no GTK and no SDL. It does
+# have a modern kernel, and the chroot carries its own libc, so Debian packages for
+# the matching architecture run unmodified. This builds a chroot out of .deb
+# packages and copies it to /data.
 #
 # Why a chroot rather than LD_LIBRARY_PATH: weston locates its modules, and
 # Chromium its resources, by absolute compiled-in paths. A chroot makes those
@@ -13,13 +18,43 @@
 # registered on this PC. Everything lands in $WORK. The source is marked
 # trusted=yes because only the Debian archive keyring is missing here; traffic is
 # still over https to deb.debian.org.
+#
+# Build both without clobbering one another:
+#   WORK=/tmp/mpcsys-armhf ./build-sysroot.sh
+#   WORK=/tmp/mpcsys-arm64 ARCH=arm64 DISTRO=trixie ./build-sysroot.sh
 set -euo pipefail
 
 HERE=$(cd "$(dirname "$0")" && pwd)
+ARCH=${ARCH:-armhf}
+DISTRO=${DISTRO:-bookworm}
 WORK=${WORK:-/tmp/mpcsys}
 HOST=${MPC_HOST:-root@mpc-one-mk2}
 DEST=/data/browser/sysroot
 CACHE_ONLY=${CACHE_ONLY:-0}
+
+case "$ARCH" in
+  armhf|armv7l|armv7) DEB_ARCH=armhf ;;
+  arm64|aarch64)      DEB_ARCH=arm64 ;;
+  *)
+    echo "FAIL: ARCH must be armhf (or armv7l) or arm64 (or aarch64), not '$ARCH'" >&2
+    exit 2
+    ;;
+esac
+
+case "$DISTRO" in
+  bookworm|trixie) ;;
+  *)
+    echo "FAIL: DISTRO must be bookworm or trixie, not '$DISTRO'" >&2
+    exit 2
+    ;;
+esac
+
+# Gen 2 needs the Mesa DRI/EGL userspace for panthor. The Gen 1 bookworm sysroot
+# intentionally keeps the smaller package set it has always shipped with.
+EXTRA_PACKAGES=
+if [ "$DEB_ARCH" = arm64 ]; then
+  EXTRA_PACKAGES="libgl1-mesa-dri libegl1"
+fi
 
 APT=(
   apt-get
@@ -29,8 +64,8 @@ APT=(
   -o Dir::Etc="$WORK/etc/apt"
   -o Dir::Etc::sourcelist="$WORK/etc/apt/sources.list"
   -o Dir::Etc::sourceparts="$WORK/etc/apt/sources.list.d"
-  -o APT::Architecture=armhf
-  -o APT::Architectures::=armhf
+  -o APT::Architecture="$DEB_ARCH"
+  -o APT::Architectures::="$DEB_ARCH"
   -o APT::Sandbox::User=root
   -o APT::Get::Download-Only=true
 )
@@ -47,16 +82,18 @@ APT=(
 # every embedded player stays silent with no error anywhere. alsa-utils brings
 # amixer, which is how the codec's mixer is checked and set from inside the
 # chroot (the MPC's own rootfs has no amixer).
+#
+# The mesa packages are added for arm64 only (see EXTRA_PACKAGES above).
 PACKAGES="chromium weston xkb-data dmz-cursor-theme fonts-dejavu-core fontconfig
           libc6 libc-bin libgcc-s1 dash coreutils grep sed seatd libseat1
-          pulseaudio pulseaudio-utils alsa-utils libasound2"
+          pulseaudio pulseaudio-utils alsa-utils libasound2 $EXTRA_PACKAGES"
 
-echo "== sandbox at $WORK"
+echo "== $DEB_ARCH / $DISTRO sandbox at $WORK"
 rm -rf "$WORK"
 mkdir -p "$WORK"/{etc/apt,var/lib/apt/lists/partial,var/cache/apt/archives/partial,root}
 touch "$WORK/var/lib/apt/lists/status"
-cat > "$WORK/etc/apt/sources.list" <<'EOF'
-deb [arch=armhf trusted=yes] https://deb.debian.org/debian bookworm main
+cat > "$WORK/etc/apt/sources.list" <<EOF
+deb [arch=$DEB_ARCH trusted=yes] https://deb.debian.org/debian $DISTRO main
 EOF
 
 "${APT[@]}" update 2>&1 | tail -2

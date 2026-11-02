@@ -31,13 +31,22 @@
 // readers share the device. Nothing is taken away from the MPC app: evdev events
 // are delivered to every open fd unless somebody grabs, and nobody does.
 //
-// Struct sizes matter: this is 32-bit arm, so struct input_event is
-// 4 + 4 (timeval) + 2 (type) + 2 (code) + 4 (value) = 16 bytes.
+// Struct sizes matter: struct input_event has a timeval, two 16-bit fields and
+// a 32-bit value, and the timeval's members are machine-word sized. Gen 1 armv7
+// is 4 + 4 + 2 + 2 + 4 = 16 bytes; Gen 2 arm64 is 8 + 8 + 2 + 2 + 4 = 24
+// bytes. The fields do not start at the same offset either: on armv7 type/code/
+// value are at 8/10/12, on arm64 they are at 16/18/20. Reading either the wrong
+// size or the wrong offsets shifts every following event, so the gesture would
+// work on one generation and silently fail on the other.
 const fs = require('fs');
 const { execFile } = require('child_process');
 
 const R = '/data/browser';
-const EV_SIZE = 16;
+const WORD = (process.arch === 'arm64' || process.arch === 'x64') ? 8 : 4;
+const EV_SIZE = WORD * 2 + 8;
+const EV_TYPE_OFF = WORD * 2;
+const EV_CODE_OFF = WORD * 2 + 2;
+const EV_VALUE_OFF = WORD * 2 + 4;
 const HOLD_MS = 2500;
 const MIN_FINGERS = 3;
 const QUIET_MS = 1200;    // the glass must be clear this long before the fingers land
@@ -214,9 +223,9 @@ function start() {
         return;
       }
       det.event(
-        buf.readUInt16LE(8),
-        buf.readUInt16LE(10),
-        buf.readInt32LE(12),
+        buf.readUInt16LE(EV_TYPE_OFF),
+        buf.readUInt16LE(EV_CODE_OFF),
+        buf.readInt32LE(EV_VALUE_OFF),
         Date.now());
       pump();
     });

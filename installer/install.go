@@ -8,8 +8,8 @@ package main
 //                       running process, and a half-replaced interpreter is how
 //                       you get a service that dies on the next restart
 //   unpack           -> sysroot, node, scripts, kiosk pages, unit, all at once
-//   install the unit -> /etc, so systemd sees it now
-//   write the unit into the firmware rootfs -> so it also starts at boot
+//   install service  -> Gen 1: /etc unit + firmware rootfs boot copy
+//                       Gen 2: /data/mpc-addins hook (dm-verity rootfs)
 //   verify           -> the toggle answers, the browser exists
 //
 // The last step is not decoration. Every bug this project has had in the
@@ -31,7 +31,13 @@ func install(d *Dev, info *Info, p *Payload) error {
 		return fmt.Errorf("the MPC is in browse mode right now: press EXIT BROWSE MODE on the device (or run /data/browser/bin/browse-down.sh) and start again")
 	}
 
-	if _, err := d.Must("systemctl stop mpc-browse.service 2>/dev/null || true"); err != nil {
+	if info.Gen == 2 {
+		// Stop both names: an upgrade from an earlier Gen 2 attempt may have left
+		// the systemd unit behind, and it must not keep the old files busy. Disable
+		// it too, so it cannot come back at boot beside the addin hook.
+		d.Must("systemctl stop cratesurf-control 2>/dev/null || true")
+		d.Must("systemctl disable --now mpc-browse.service 2>/dev/null || true")
+	} else if _, err := d.Must("systemctl stop mpc-browse.service 2>/dev/null || true"); err != nil {
 		// Not fatal: on a fresh device there is nothing to stop.
 		note("no existing toggle to stop")
 	}
@@ -59,44 +65,71 @@ func install(d *Dev, info *Info, p *Payload) error {
 	}
 	ok("browser profile seeded")
 
-	// The unit goes into /etc first and is started here, so that a failure in
-	// the rootfs step below still leaves a working install that survives
-	// everything except a reboot.
-	unitCmd := `cp /data/browser/mpc-browse.service /etc/systemd/system/mpc-browse.service &&
+	// Gen 1 uses a normal systemd unit in /etc and writes it into the read-only
+	// firmware rootfs so it survives a reboot. Gen 2's rootfs is dm-verity, so
+	// it uses the /data/mpc-addins boot hook instead; that hook starts the same
+	// control server through systemd-run and is what the SSH stick's autorun
+	// calls at boot.
+	if info.Gen == 2 {
+		hookSetup := `mkdir -p /data/mpc-addins/cratesurf-browse &&
+cp /data/browser/mpc-gen2-hook.sh /data/mpc-addins/cratesurf-browse/install.sh &&
+chmod +x /data/mpc-addins/cratesurf-browse/install.sh`
+		if _, err := d.Must(hookSetup); err != nil {
+			return fmt.Errorf("installing the Gen 2 boot hook: %v", err)
+		}
+		hookOut, hookErr := d.Must("/data/mpc-addins/cratesurf-browse/install.sh")
+		for _, line := range strings.Split(strings.TrimSpace(hookOut), "\n") {
+			if line != "" {
+				note("%s", strings.TrimSpace(line))
+			}
+		}
+		if hookErr != nil {
+			return fmt.Errorf("starting the Gen 2 control service: %v", hookErr)
+		}
+		active, activeErr := d.Must("systemctl is-active cratesurf-control 2>/dev/null")
+		if activeErr != nil || active != "active" {
+			return fmt.Errorf("the Gen 2 control service did not stay running; check `journalctl -u cratesurf-control` on the device")
+		}
+		ok("Gen 2 boot hook installed and control service running")
+	} else {
+		// The unit goes into /etc first and is started here, so that a failure in
+		// the rootfs step below still leaves a working install that survives
+		// everything except a reboot.
+		unitCmd := `cp /data/browser/mpc-browse.service /etc/systemd/system/mpc-browse.service &&
 chmod 644 /etc/systemd/system/mpc-browse.service &&
 systemctl daemon-reload &&
 systemctl enable mpc-browse.service >/dev/null 2>&1 || true
 systemctl restart mpc-browse.service
 sleep 2
 systemctl is-active mpc-browse.service`
-	if active, err := d.Must(unitCmd); err != nil {
-		return fmt.Errorf("starting the toggle service: %v", err)
-	} else if active != "active" {
-		return fmt.Errorf("the toggle service started and immediately stopped; check `journalctl -u mpc-browse` on the device")
-	}
-	ok("toggle service installed and running")
-
-	bootOut, bootErr := d.Must("/data/browser/install-rootfs-unit.sh")
-	for _, line := range strings.Split(strings.TrimSpace(bootOut), "\n") {
-		if line != "" {
-			note("%s", strings.TrimSpace(line))
+		if active, err := d.Must(unitCmd); err != nil {
+			return fmt.Errorf("starting the toggle service: %v", err)
+		} else if active != "active" {
+			return fmt.Errorf("the toggle service started and immediately stopped; check `journalctl -u mpc-browse` on the device")
 		}
-	}
-	if bootErr != nil {
-		// This one matters enough to be loud: without it the install works
-		// until the next reboot and then silently stops.
-		warn("the boot copy did not install: %v", bootErr)
-		warn("CrateSurf will work now, but will not come back after a reboot")
-	} else {
-		ok("unit written into the firmware rootfs (survives a reboot)")
+		ok("toggle service installed and running")
+
+		bootOut, bootErr := d.Must("/data/browser/install-rootfs-unit.sh")
+		for _, line := range strings.Split(strings.TrimSpace(bootOut), "\n") {
+			if line != "" {
+				note("%s", strings.TrimSpace(line))
+			}
+		}
+		if bootErr != nil {
+			// This one matters enough to be loud: without it the install works
+			// until the next reboot and then silently stops.
+			warn("the boot copy did not install: %v", bootErr)
+			warn("CrateSurf will work now, but will not come back after a reboot")
+		} else {
+			ok("unit written into the firmware rootfs (survives a reboot)")
+		}
 	}
 
 	headline("Checking")
-	fails := verify(d)
+	fails := verify(d, info)
 	if len(fails) > 0 {
 		return fmt.Errorf("%s", strings.Join(fails, "\n        "))
 	}
-	_ = info
 
 	host, _, err := net.SplitHostPort(d.Addr)
 	if err != nil {

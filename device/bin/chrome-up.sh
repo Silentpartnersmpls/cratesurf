@@ -10,6 +10,7 @@
 # after leaving the start page is get stuck.
 R=/data/browser
 S=$R/sysroot
+. "$R/bin/board.sh"
 URL=${1:-http://127.0.0.1:8798/home}
 
 # Extra flags, one per line, from run/chrome-flags. Empty unless somebody put a file
@@ -18,7 +19,7 @@ URL=${1:-http://127.0.0.1:8798/home}
 # additive - the flags below are always there.
 EXTRA=$(cat "$R/run/chrome-flags" 2>/dev/null)
 
-# Software raster, on purpose, even though the GPU is faster.
+# Software raster, on purpose, on Gen 1. The GPU is faster there, but not usable.
 #
 # The chroot does have Mesa EGL on Panfrost (Mali-T760) and weston does hand Chromium
 # a wayland socket, so taking --disable-gpu out works and measures well: the same
@@ -28,12 +29,18 @@ EXTRA=$(cat "$R/run/chrome-flags" 2>/dev/null)
 # framebuffer agrees - whole black frames and half-drawn frames with the nav bar
 # missing during a page load. Speed that tears is worse than a page that is slow.
 # The benchmark that sold it measured frame *timing* only, never frame *contents*.
-# So software raster is the default, and the GPU stays behind a file for whoever wants
-# to try a driver fix (--disable-gpu-compositing, --use-gl=egl, a newer Mesa).
-#   touch run/chrome-gpu-raster    -> next start uses the GPU
-#   rm    run/chrome-gpu-raster    -> back to software
+#
+# Gen 2 is the opposite case: its trixie/Mesa 25/panthor sysroot exists to drive the
+# RK3588's Mali-G610, and the 64-bit port reports Chromium GPU rendering working there.
+# The board profile makes the GPU the Gen 2 default; the markers stay as escape
+# hatches for both generations:
+#   touch run/chrome-gpu-raster       -> next start uses the GPU (Gen 1 opt-in)
+#   rm    run/chrome-gpu-raster       -> back to the profile default
+#   touch run/chrome-software-raster  -> next start forces software (Gen 2 fallback)
 RASTER=--disable-gpu
+[ "$BOARD_GPU_DEFAULT" = 1 ] && RASTER=""
 [ -f "$R/run/chrome-gpu-raster" ] && RASTER=""
+[ -f "$R/run/chrome-software-raster" ] && RASTER=--disable-gpu
 export CHROME_RASTER="$RASTER"
 export CHROME_EXTRA="$EXTRA"
 

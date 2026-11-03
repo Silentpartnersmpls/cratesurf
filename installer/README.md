@@ -10,9 +10,11 @@ behave the same way.
 
 A release build from this tree has both payloads: armv7l for the MPC One+ /
 Live II (Gen 1) and arm64 for the MPC XL / Live III (Gen 2). The installer probes
-the unit, detects the generation, and picks the matching payload; there is no
-second build to choose. The published 0.1.2 binaries predate the Gen 2 payload, so
-use a release built from this tree for Gen 2. See
+the unit, shows what it found, and asks you to confirm the model printed on the
+unit before it downloads anything. It warns if that answer disagrees with the
+probe, returns to the list when you say no, and refuses a Gen 1/Gen 2 cross-over;
+there is no second build to choose. The published 0.1.2 binaries predate the Gen 2
+payload, so use a release built from this tree for Gen 2. See
 [README.md](../README.md#mpc-xl-and-live-iii-gen-2) for the hardware status (the
 Gen 2 path has not been through this repository's hardware pass yet).
 
@@ -32,13 +34,19 @@ cratesurf-installer-linux-amd64
    version, free space on `/data`, and whether CrateSurf is already there. It
    refuses to continue on a device it does not recognise rather than
    half-installing on it.
-4. **Downloads the matching payload** (once, checksum-verified) and streams it
+4. **Confirms the model.** It shows the model it read from the unit and asks you
+   to choose the model printed on the unit: MPC One+, MPC Live II, MPC XL, or
+   MPC Live III. It warns when the answer and the probe disagree. Answer `n` to
+   go back to the list; a Gen 1/Gen 2 mismatch cannot be continued. The
+   `--host` command-line path skips this question and trusts the probe, because
+   scripts have no one to ask.
+5. **Downloads the matching payload** (once, checksum-verified) and streams it
    into `/data/browser`. Gen 1 is armv7l/bookworm; Gen 2 is arm64/trixie.
-5. **Installs the toggle service.** Gen 1 gets the unit in `/etc` plus a copy in
+6. **Installs the toggle service.** Gen 1 gets the unit in `/etc` plus a copy in
    the read-only firmware rootfs. Gen 2 installs
    `/data/mpc-addins/cratesurf-browse/install.sh` instead, because its root
    filesystem is dm-verity.
-6. **Checks its own work.** The service is running, something is listening on
+7. **Checks its own work.** The service is running, something is listening on
    port 8798, and the browser binary is really in the sysroot. If any of that is
    false it says so and exits non-zero.
 

@@ -74,6 +74,15 @@ The project is alpha: expect the feature list below to move faster than the vers
   does not work yet** on the same unit; it is the next item on the roadmap and is listed in
   KNOWN-ISSUES.md.
 
+### Changed
+
+- **The installer asks which MPC model is connected.** It still probes the unit, but shows the
+  result and asks you to confirm the model printed on the unit (MPC One+, MPC Live II, MPC XL or
+  MPC Live III). If the answer and the probe disagree it warns and returns to the list on `n`; a
+  Gen 1/Gen 2 mismatch is blocked because the armv7l and aarch64 payloads are not interchangeable.
+  The question comes before the payload is downloaded, so backing out changes nothing. The
+  non-interactive `--host` path still trusts the probe.
+
 ### Added
 
 - **Gen 2 (MPC XL / Live III) support as a per-board layer, not an XL-only fork.** `device/bin/board.sh`

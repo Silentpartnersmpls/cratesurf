@@ -3,12 +3,13 @@ package main
 // CrateSurf installer: one binary, no prerequisites on the machine it runs on.
 //
 // The interface is a terminal with a numbered menu because that is what works
-// everywhere without shipping a GUI toolkit per platform, and because the two
-// questions worth asking (address, password) fit in one line each. Everything
-// after that is machine work with a progress line, which is the part the person
-// installing should not have to think about.
+// everywhere without shipping a GUI toolkit per platform, and because the
+// questions worth asking (address, model, password) fit in one line each.
+// Everything after that is machine work with a progress line, which is the part
+// the person installing should not have to think about.
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"net"
@@ -54,7 +55,7 @@ func main() {
 	}
 
 	if *host != "" {
-		runInstall(*host, *user, *pass, spec, *sha, *check)
+		runInstall(*host, *user, *pass, spec, *sha, *check, false)
 		return
 	}
 
@@ -67,7 +68,7 @@ func main() {
 		blank()
 		switch strings.ToLower(ask("Choice", "1")) {
 		case "1":
-			runInstall("", *user, *pass, spec, *sha, false)
+			runInstall("", *user, *pass, spec, *sha, false, true)
 			return
 		case "2":
 			d, info, err := rootFlow()
@@ -80,12 +81,12 @@ func main() {
 			// Straight into the install, reusing the connection and the facts
 			// just read: retyping the address is exactly the kind of small
 			// friction that makes people give up halfway.
-			if err := doInstall(d, info, spec, *sha, false); err != nil {
+			if err := doInstall(d, info, spec, *sha, true); err != nil {
 				die(err)
 			}
 			return
 		case "3":
-			runInstall("", *user, *pass, spec, *sha, true)
+			runInstall("", *user, *pass, spec, *sha, true, false)
 			return
 		case "q", "quit", "exit":
 			return
@@ -101,7 +102,7 @@ func banner() {
 	fmt.Println(paint(dim, "  a full browser on your MPC, from this computer"))
 }
 
-func runInstall(host, user, pass, spec, sha string, checkOnly bool) {
+func runInstall(host, user, pass, spec, sha string, checkOnly, askModel bool) {
 	if host == "" {
 		headline("The MPC")
 		note("You need its address and it must be on this network.")
@@ -136,7 +137,7 @@ func runInstall(host, user, pass, spec, sha string, checkOnly bool) {
 		return
 	}
 
-	if err := doInstall(d, info, spec, sha, checkOnly); err != nil {
+	if err := doInstall(d, info, spec, sha, askModel); err != nil {
 		die(err)
 	}
 }
@@ -159,14 +160,27 @@ func runHardenOnly(host, user, pass string) {
 	}
 }
 
-// doInstall is the shared tail of both entry points: readiness, payload, then
-// the sequence in install.go.
-func doInstall(d *Dev, info *Info, spec, sha string, _ bool) error {
+// doInstall is the shared tail of both entry points: model confirmation,
+// readiness, payload, then the sequence in install.go.
+func doInstall(d *Dev, info *Info, spec, sha string, askModel bool) error {
 	if problems := info.problems(); len(problems) > 0 {
 		for _, p := range problems {
 			bad("%s", p)
 		}
 		return fmt.Errorf("this device cannot take the install as it stands")
+	}
+
+	if askModel {
+		chosen, err := chooseModel(info)
+		if err != nil {
+			if errors.Is(err, errModelCancelled) {
+				blank()
+				note("install cancelled; nothing was changed")
+				return nil
+			}
+			return err
+		}
+		ok("using %s", chosen)
 	}
 
 	headline("The payload")

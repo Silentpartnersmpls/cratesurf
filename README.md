@@ -230,8 +230,9 @@ cratesurf-installer-linux-amd64           Linux
 
 The published 0.1.2-alpha binaries are Gen 1 only; for Gen 2, build the installer from this tree
 until the next release. It needs nothing installed on your machine - not Python, not Node, not
-OpenSSH. It checks the device, downloads and verifies the chroot, copies it over, installs the
-toggle, writes the Gen 1 unit into the firmware rootfs (or installs the Gen 2 addin hook) so it
+OpenSSH. It checks the device, asks you to confirm the MPC model it prints (with a warning and a way
+back if the probe disagrees), downloads and verifies the matching chroot, copies it over, installs
+the toggle, writes the Gen 1 unit into the firmware rootfs (or installs the Gen 2 addin hook) so it
 starts at boot, and then checks its own work. See
 **[installer/README.md](installer/README.md)**.
 

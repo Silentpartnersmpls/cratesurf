@@ -1,10 +1,11 @@
 # Installing CrateSurf
 
-**Short version: download the installer from [Releases](https://github.com/Silentpartnersmpls/cratesurf/releases) instead of following this document.** One binary for Windows, macOS or Linux, one
-question (the MPC's IP), and it does everything below except root the MPC for you, which it walks
-you through separately. See [`installer/`](installer/README.md) for its own notes. This document is
-the long way round, and it is worth reading even if you use the installer, because it is what the
-installer is doing.
+**Short version: download the installer from [Releases](https://github.com/Silentpartnersmpls/cratesurf/releases) instead of following this document.** One binary for Windows, macOS or Linux, the
+MPC's IP and a model confirmation (One+, Live II, XL or Live III), and it does everything below
+except root the MPC for you, which it walks you through separately. It warns if the model you chose
+does not match the connected unit and lets you go back before downloading anything. See
+[`installer/`](installer/README.md) for its own notes. This document is the long way round, and it
+is worth reading even if you use the installer, because it is what the installer is doing.
 
 The 0.1.2-alpha binaries in Releases are Gen 1 only. For a Gen 2 unit, build the installer from this
 branch until the next release; the source steps below work for both.
